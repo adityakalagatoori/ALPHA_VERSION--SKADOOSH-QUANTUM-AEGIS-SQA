@@ -650,41 +650,6 @@ Private cryptographic keys in SQA never exist in application memory. All signing
 
 ---
 
-## 🗺️ Future Roadmap
-
-### Phase 1 — Foundation (Current)
-- [x] Post-quantum identity (Kyber-1024 + Dilithium)
-- [x] Scoped capability JWT enforcement
-- [x] SHA3-256 immutable audit chain + Merkle verification
-- [x] Gemini AI behavioral scoring
-- [x] ArmorClaw prompt injection firewall
-- [x] Secure enclave key storage
-- [x] Honeypot isolation chamber
-- [x] Real-time risk dashboard (React + WebSocket)
-- [x] Self-audit stress test (11 vectors identified and closed)
-
-### Phase 2 — Enterprise Hardening (Q3–Q4 2025)
-- [ ] Full gRPC + Kyber-1024 inter-service channel encryption
-- [ ] Hardware Security Module (HSM) integration for enclave operations
-- [ ] Federated behavioral baselines across enterprise agent swarms
-- [ ] SIEM integration (Splunk, Elastic, Datadog)
-- [ ] SOC 2 Type II certification pipeline
-
-### Phase 3 — Autonomous Defense (Q1–Q2 2026)
-- [ ] Autonomous threat response — agent isolation without human trigger
-- [ ] Cross-agent trust graph — transitive trust scoring across agent networks
-- [ ] Predictive CVE patching from honeypot telemetry (Oracle Scroll)
-- [ ] Multi-cloud Merkle audit federation with cross-org verification
-- [ ] Zero-knowledge proof capability attestation (ZK-SNARK scoped token proofs)
-
-### Phase 4 — Protocol Layer (2026+)
-- [ ] SQA as a universal AI agent security protocol — SDK for any agent framework
-- [ ] Standardized PQ-JWT specification contribution
-- [ ] Formal security proof submission for core validation pipeline
-- [ ] FIPS 140-3 validation of cryptographic module
-
----
-
 ## 📈 Scalability & Deployment
 
 ### Deployment Topologies
