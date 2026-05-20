@@ -52,7 +52,6 @@ Banks run AI agents. Hospitals run AI agents. Legal firms run AI agents. Governm
 - [Secure Enclave Protection](#-secure-enclave-protection)
 - [Example Security Flow](#-example-security-flow)
 - [Tech Stack](#-tech-stack)
-- [Future Roadmap](#-future-roadmap)
 - [Scalability & Deployment](#-scalability--deployment)
 - [Why SQA Is Different](#-why-sqa-is-different)
 - [Final Technical Conclusion](#-final-technical-conclusion)
