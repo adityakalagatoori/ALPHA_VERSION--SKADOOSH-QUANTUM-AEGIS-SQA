@@ -1,4 +1,5 @@
-# <img width="215" height="214" alt="Screenshot 2026-05-19 190505-Photoroom" src="https://github.com/user-attachments/assets/3c01e6b1-ec29-48a4-8403-1f904d026b87" />
+# <img width="215" height="214" alt="Screenshot 2026-05-19 190505-Photoroom" src="https://github.com/user-attachments/assets/3c01e6b1-ec29-48a4-8403-1f904d026b87" />  { WILL BE LAUNCHED SOON }
+
  Skadoosh Quantum Aegis (SQA)   
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
