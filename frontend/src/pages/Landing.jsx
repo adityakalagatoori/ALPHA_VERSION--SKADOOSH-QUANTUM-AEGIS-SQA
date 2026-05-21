@@ -24,7 +24,7 @@ function Landing() {
     try {
 
       await axios.post(
-        "http://localhost:8000/request-access",
+        "https://sqa-backend-hsw2.onrender.com/request-access",
         formData
       );
 

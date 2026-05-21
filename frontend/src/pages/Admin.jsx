@@ -11,7 +11,7 @@ export default function Admin() {
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [customPassword, setCustomPassword] = useState("");
 
-    const API = "http://localhost:8000";
+    const API = "https://sqa-backend-hsw2.onrender.com";
 
     // =========================
     // LOGIN

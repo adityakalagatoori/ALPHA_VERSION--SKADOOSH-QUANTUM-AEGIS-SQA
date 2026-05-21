@@ -3,7 +3,7 @@ import axios from "axios";
 
 export default function Admin() {
 
-    const API = "http://127.0.0.1:8000";
+    const API = "https://sqa-backend-hsw2.onrender.com";
 
     const [password, setPassword] = useState("");
 
