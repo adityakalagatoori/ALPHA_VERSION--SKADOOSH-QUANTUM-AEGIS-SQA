@@ -4,3 +4,4 @@ __pycache__/
 node_modules/
 dist/
 *.pyc
+SQA_BUILD_PLAN.md
