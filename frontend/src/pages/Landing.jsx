@@ -1,4 +1,41 @@
+import { useState } from "react";
+import axios from "axios";
+
 function Landing() {
+
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    reason: ""
+  });
+
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+
+      await axios.post(
+        "http://localhost:8000/request-access",
+        formData
+      );
+
+      setSubmitted(true);
+
+    } catch (error) {
+      console.error(error);
+      alert("Submission failed");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black text-white px-6 py-16">
 
@@ -168,58 +205,6 @@ function Landing() {
         </div>
       </div>
 
-      {/* SECTORS */}
-      <div className="mt-20 max-w-6xl mx-auto">
-
-        <h2 className="text-5xl font-bold text-center text-orange-400">
-          SECTORS DEFENDED BY SQA
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
-
-          <div className="bg-zinc-900 p-6 rounded-3xl border border-yellow-500">
-            <h3 className="text-2xl font-bold text-yellow-300">
-              🏦 Banking
-            </h3>
-
-            <p className="mt-4 text-gray-400">
-              Quantum-safe financial signing and zero stolen-key access.
-            </p>
-          </div>
-
-          <div className="bg-zinc-900 p-6 rounded-3xl border border-green-500">
-            <h3 className="text-2xl font-bold text-green-300">
-              🏥 Healthcare
-            </h3>
-
-            <p className="mt-4 text-gray-400">
-              Tamper-proof audit trails and HIPAA-safe agent controls.
-            </p>
-          </div>
-
-          <div className="bg-zinc-900 p-6 rounded-3xl border border-blue-500">
-            <h3 className="text-2xl font-bold text-blue-300">
-              ⚖️ Legal
-            </h3>
-
-            <p className="mt-4 text-gray-400">
-              Verifiable execution and immutable evidence trails.
-            </p>
-          </div>
-
-          <div className="bg-zinc-900 p-6 rounded-3xl border border-red-500">
-            <h3 className="text-2xl font-bold text-red-300">
-              🏛️ Government
-            </h3>
-
-            <p className="mt-4 text-gray-400">
-              Quantum-safe intelligence and post-quantum communications.
-            </p>
-          </div>
-
-        </div>
-      </div>
-
       {/* REQUEST ACCESS */}
       <div className="mt-24 max-w-3xl mx-auto bg-zinc-900 p-10 rounded-3xl border border-yellow-500">
 
@@ -227,30 +212,55 @@ function Landing() {
           REQUEST ACCESS
         </h2>
 
-        <div className="mt-8 flex flex-col gap-4">
+        {submitted ? (
 
-          <input
-            type="text"
-            placeholder="Your Name"
-            className="bg-black border border-zinc-700 rounded-xl p-4"
-          />
+          <div className="mt-8 text-center text-green-400 text-2xl font-bold">
+            Request submitted successfully.
+          </div>
 
-          <input
-            type="email"
-            placeholder="Your Email"
-            className="bg-black border border-zinc-700 rounded-xl p-4"
-          />
+        ) : (
 
-          <textarea
-            placeholder="Why do you want access?"
-            className="bg-black border border-zinc-700 rounded-xl p-4 h-40"
-          />
+          <form
+            onSubmit={handleSubmit}
+            className="mt-8 flex flex-col gap-4"
+          >
 
-          <button className="bg-yellow-400 text-black font-bold py-4 rounded-xl hover:bg-yellow-300 transition">
-            Request Access
-          </button>
+            <input
+              type="text"
+              name="name"
+              placeholder="Your Name"
+              onChange={handleChange}
+              className="bg-black border border-zinc-700 rounded-xl p-4"
+              required
+            />
 
-        </div>
+            <input
+              type="email"
+              name="email"
+              placeholder="Your Email"
+              onChange={handleChange}
+              className="bg-black border border-zinc-700 rounded-xl p-4"
+              required
+            />
+
+            <textarea
+              name="reason"
+              placeholder="Why do you want access?"
+              onChange={handleChange}
+              className="bg-black border border-zinc-700 rounded-xl p-4 h-40"
+              required
+            />
+
+            <button
+              type="submit"
+              className="bg-yellow-400 text-black font-bold py-4 rounded-xl hover:bg-yellow-300 transition"
+            >
+              Request Access
+            </button>
+
+          </form>
+
+        )}
 
       </div>
 
