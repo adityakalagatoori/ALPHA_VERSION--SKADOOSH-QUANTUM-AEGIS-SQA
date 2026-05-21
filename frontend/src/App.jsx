@@ -8,7 +8,7 @@ import Admin from "./pages/Admin";
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/SKADOOSH-QUANTUM-AEGIS-SQA">
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/demo" element={<Demo />} />
