@@ -1,0 +1,5 @@
+﻿{
+  "name": "TestAgent_M1",
+  "sector": "Banking",
+  "allowed_actions": ["read", "execute"]
+}

@@ -1,0 +1,45 @@
+======================================
+SQA DRAGON WARRIOR — LIVE FEATURE TESTING
+Timestamp: 2026-05-26
+======================================
+
+SERVERS STATUS:
+✅ Backend: 127.0.0.1:8000 — All 6 modules ACTIVE
+✅ Frontend: localhost:5175 — Dev server ready
+
+======================================
+M1 — KYBER1024 KEYPAIRS
+======================================
+Button: REGISTER AGENT
+Endpoint: POST /agents/register
+Payload: {"name":"test-agent-1","sector":"banking","allowed_actions":["read","write","payments"]}
+Response Status: 200 OK
+Response Data:
+  - agent_id: d5122cf1-b94c-40eb-a807-d9f2d3e1c762 ✓ REAL
+  - kyber_algorithm: Kyber1024 ✓ REAL
+  - dilithium_algorithm: ML-DSA-65 ✓ REAL
+  - kyber_public_key: (valid base64, 928 chars) ✓ REAL
+  - dilithium_public_key: (valid base64, 1700+ chars) ✓ REAL
+  - token: eyJhbGc... (valid JWT, exp timestamp real) ✓ REAL
+Status: ✅ ALL REAL DATA
+
+Saved for downstream tests:
+  AGENT_ID = d5122cf1-b94c-40eb-a807-d9f2d3e1c762
+  TOKEN = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZ2VudF9pZCI6ImQ1MTIyY2YxLWI5NGMtNDBlYi1hODA3LWQ5ZjJkM2UxYzc2MiIsIm5hbWUiOiJ0ZXN0LWFnZW50LTEiLCJzZWN0b3IiOiJiYW5raW5nIiwiYWxsb3dlZF9hY3Rpb25zIjpbInJlYWQiLCJ3cml0ZSIsInBheW1lbnRzIl0sImlhdCI6MTc3OTc2NzU1MiwiZXhwIjoxNzc5NzY3ODUyLCJ0b2tlbl90eXBlIjoiQ1JBTkVfQ0FQQUJJTElUWV9UT0tFTiIsInNlY3VyaXR5X2xheWVyIjoiQ1JBTkUiLCJxdWFudHVtX3NpZ25lZCI6dHJ1ZX0.4CknYxhvMYHhxZIx9utMsJ0zSb5B2ekNuYZAt14E8PQ
+
+======================================
+NEXT FEATURES TO TEST:
+- M3 — Dilithium Signature Gate (terminal)
+- M4 — Blacklist Agent
+- M5 — Replay Attack
+- M6 — Secure Enclave (terminal)
+- M7 — Oogway Signal
+- C1 — Verify Token
+- C3 — MultiSig Start
+- C5/C6 — Token Expiry
+- C7 — Tribunal
+- S1-S7 — Snake features
+- A1-A9 — Mantis features
+- T1-T6 — Tigress features
+- P1-P11 — PO features
+======================================

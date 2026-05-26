@@ -1,0 +1,92 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+[TIGRESS] LOADING SENTENCE MODEL...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|##########| 103/103 [00:00<00:00, 4099.03it/s]
+[TIGRESS] SENTENCE MODEL READY
+liboqs-python faulthandler is disabled
+
+==============================
+SQA PQC CONFIG
+==============================
+KYBER ALGORITHM: Kyber1024
+SIGNATURE ALGORITHM: ML-DSA-65
+==============================
+
+[S2] AUDIT KEY LOADED from Supabase
+[S1/S3] Load error: {'code': '42703', 'details': None, 'hint': None, 'message': 'column audit_chain.created_at does not exist'}
+SECURE ROUTER LOADED
+[MANTIS] Loaded 1 baselines from Supabase
+[ACCESS] Access request routes active
+[ADMIN] Admin panel routes active
+[DASHBOARD] Dashboard stub routes active
+INFO:     Started server process [9988]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+ERROR:    [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8000): [winerror 10048] only one usage of each socket address (protocol/network address/port) is normally permitted
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+
+===================================
+ >> SQA DRAGON WARRIOR ONLINE 
+===================================
+
+[SNAKE] Tamper monitor started
+[MANTIS] Oracle Scroll learning started
+
+===================================
+ SECURITY EVENT 
+===================================
+{
+  "event_id": "SYSTEM_STARTUP_1779742292.266425",
+  "event_type": "SYSTEM_STARTUP",
+  "severity": "LOW",
+  "title": "SQA Dragon Warrior Online",
+  "agent_id": "SYSTEM",
+  "message": "Post-quantum AI security gateway operational",
+  "timestamp": "2026-05-26T02:21:32.266425",
+  "metadata": {
+    "architecture": "DRAGON_WARRIOR",
+    "modules": {
+      "PO": true,
+      "TIGRESS": true,
+      "MONKEY": true,
+      "CRANE": true,
+      "SNAKE": true,
+      "MANTIS": true
+    }
+  }
+}
+===================================
+
+[PO] Dragon Warrior ACTIVE
+[TIGRESS] Prompt Defense ACTIVE
+[MONKEY] Quantum Identity ACTIVE
+[CRANE] Capability Governance ACTIVE
+[SNAKE] Immutable Audit ACTIVE
+[MANTIS] Behavioral AI ACTIVE
+
+===================================
+ SNAKE TAMPER MONITOR ACTIVE 
+===================================
+
+
+===================================
+ SECURITY EVENT 
+===================================
+{
+  "event_id": "SYSTEM_SHUTDOWN_1779742292.266425",
+  "event_type": "SYSTEM_SHUTDOWN",
+  "severity": "MEDIUM",
+  "title": "SQA Shutdown",
+  "agent_id": "SYSTEM",
+  "message": "Dragon Warrior gateway shutting down",
+  "timestamp": "2026-05-26T02:21:32.266425",
+  "metadata": {}
+}
+===================================
+
+
+===================================
+ >> SQA SHUTDOWN 
+===================================
+

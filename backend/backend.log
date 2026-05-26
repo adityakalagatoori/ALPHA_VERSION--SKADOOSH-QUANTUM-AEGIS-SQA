@@ -1,0 +1,50 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+[TIGRESS] LOADING SENTENCE MODEL...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|##########| 103/103 [00:00<00:00, 2484.29it/s]
+[TIGRESS] SENTENCE MODEL READY
+liboqs-python faulthandler is disabled
+C:\Users\adity\OneDrive\Desktop\SQA\backend\services\tribunal_service.py:8: FutureWarning: 
+
+All support for the `google.generativeai` package has ended. It will no longer be receiving 
+updates or bug fixes. Please switch to the `google.genai` package as soon as possible.
+See README for more details:
+
+https://github.com/google-gemini/deprecated-generative-ai-python/blob/main/README.md
+
+  from google.generativeai import genai
+
+==============================
+SQA PQC CONFIG
+==============================
+KYBER ALGORITHM: Kyber1024
+SIGNATURE ALGORITHM: ML-DSA-65
+==============================
+
+[S2] ERROR creating audit key: too many values to unpack (expected 2)
+[S5] SNAKE not available: too many values to unpack (expected 2)
+
+[TRIBUNAL SERVICE NOT READY] cannot import name 'genai' from 'google.generativeai' (C:\Users\adity\OneDrive\Desktop\SQA\venv\Lib\site-packages\google\generativeai\__init__.py)
+[S2] ERROR creating audit key: too many values to unpack (expected 2)
+
+[SNAKE AUDIT NOT READY]
+too many values to unpack (expected 2)
+[S2] ERROR creating audit key: too many values to unpack (expected 2)
+
+[SNAKE AUDIT IMPORT ERROR]
+too many values to unpack (expected 2)
+[S2] ERROR creating audit key: too many values to unpack (expected 2)
+
+[SNAKE AUDIT IMPORT ERROR]
+too many values to unpack (expected 2)
+SECURE ROUTER LOADED
+Traceback (most recent call last):
+  File "C:\Users\adity\OneDrive\Desktop\SQA\backend\main.py", line 85, in <module>
+    from routes.po_routes import (
+  File "C:\Users\adity\OneDrive\Desktop\SQA\backend\routes\po_routes.py", line 9, in <module>
+    from po.po_gateway import po_gateway
+  File "C:\Users\adity\OneDrive\Desktop\SQA\backend\po\po_gateway.py", line 18, in <module>
+    from po.po_pipeline import execute_po_pipeline
+  File "C:\Users\adity\OneDrive\Desktop\SQA\backend\po\po_pipeline.py", line 15, in <module>
+    from services.tigress_service import (
+ImportError: cannot import name 'tigress_scan_request' from 'services.tigress_service' (C:\Users\adity\OneDrive\Desktop\SQA\backend\services\tigress_service.py)

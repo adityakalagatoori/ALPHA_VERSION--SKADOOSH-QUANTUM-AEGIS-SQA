@@ -1,0 +1,199 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+[TIGRESS] LOADING SENTENCE MODEL...
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|##########| 103/103 [00:00<00:00, 11142.98it/s]
+[TIGRESS] SENTENCE MODEL READY
+liboqs-python faulthandler is disabled
+INFO:     Started server process [10024]
+INFO:     Waiting for application startup.
+
+==============================
+SQA PQC CONFIG
+==============================
+KYBER ALGORITHM: Kyber1024
+SIGNATURE ALGORITHM: ML-DSA-65
+==============================
+
+[S2] Warning loading audit key: {'code': '42703', 'details': None, 'hint': None, 'message': 'column audit_keys.is_active does not exist'}
+[S2] Warning: Could not persist to Supabase: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'is_active' column of 'audit_keys' in the schema cache"}
+[S2] AUDIT KEY CREATED
+[S1/S3] Loaded 36 audit entries from Supabase
+SECURE ROUTER LOADED
+[ACCESS] Access request routes active
+[ADMIN] Admin panel routes active
+[DASHBOARD] Dashboard stub routes active
+
+===================================
+ >> SQA DRAGON WARRIOR ONLINE 
+===================================
+
+[SNAKE] Tamper monitor started
+[MANTIS] Oracle Scroll learning started
+
+===================================
+ SECURITY EVENT 
+===================================
+{
+  "event_id": "SYSTEM_STARTUP_1779761822.307105",
+  "event_type": "SYSTEM_STARTUP",
+  "severity": "LOW",
+  "title": "SQA Dragon Warrior Online",
+  "agent_id": "SYSTEM",
+  "message": "Post-quantum AI security gateway operational",
+  "timestamp": "2026-05-26T07:47:02.307105",
+  "metadata": {
+    "architecture": "DRAGON_WARRIOR",
+    "modules": {
+      "PO": true,
+      "TIGRESS": true,
+      "MONKEY": true,
+      "CRANE": true,
+      "SNAKE": true,
+      "MANTIS": true
+    }
+  }
+}
+===================================
+
+[PO] Dragon Warrior ACTIVE
+[TIGRESS] Prompt Defense ACTIVE
+[MONKEY] Quantum Identity ACTIVE
+[CRANE] Capability Governance ACTIVE
+[SNAKE] Immutable Audit ACTIVE
+[MANTIS] Behavioral AI ACTIVE
+
+===================================
+ SNAKE TAMPER MONITOR ACTIVE 
+===================================
+
+
+===================================
+ SNAKE TAMPER DETECTED 
+===================================
+Corrupted Index: 19
+===================================
+
+
+===================================
+ TAMPER DETECTED 
+===================================
+{'valid': False, 'tampered_index': 19, 'entry': {'entry_id': '1cfb159f-c49e-46fd-b285-8f79105e3d3b', 'audit_id': '1cfb159f-c49e-46fd-b285-8f79105e3d3b', 'chain_index': 19, 'timestamp': '2026-05-26T04:46:17.371846+00:00', 'agent_id': '561bddc1-20e9-497b-a8bb-194d2e3a3437', 'action': 'AGENT_REGISTERED', 'status': 'SUCCESS', 'metadata': {'sector': 'banking'}, 'payload_hash': '', 'previous_hash': '29861674ecbff43f93595454c7467bbfdc44ba22ef270005b967234a048b3108', 'current_hash': '1106b9b6330d7fe0ea1dc9788b5b6251411b90d361dcf7da2704d221da1f8879', 'dilithium_signature': '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', 'verification': 'TAMPERED'}}
+===================================
+
+
+===================================
+ SECURITY EVENT 
+===================================
+{
+  "event_type": "TAMPER_DETECTED",
+  "severity": "HIGH",
+  "title": "Audit Chain Tampered",
+  "agent_id": "SYSTEM",
+  "message": "Blockchain integrity violation detected",
+  "metadata": {
+    "tampered_index": 19,
+    "entry": {
+      "entry_id": "1cfb159f-c49e-46fd-b285-8f79105e3d3b",
+      "audit_id": "1cfb159f-c49e-46fd-b285-8f79105e3d3b",
+      "chain_index": 19,
+      "timestamp": "2026-05-26T04:46:17.371846+00:00",
+      "agent_id": "561bddc1-20e9-497b-a8bb-194d2e3a3437",
+      "action": "AGENT_REGISTERED",
+      "status": "SUCCESS",
+      "metadata": {
+        "sector": "banking"
+      },
+      "payload_hash": "",
+      "previous_hash": "29861674ecbff43f93595454c7467bbfdc44ba22ef270005b967234a048b3108",
+      "current_hash": "1106b9b6330d7fe0ea1dc9788b5b6251411b90d361dcf7da2704d221da1f8879",
+      "dilithium_signature": "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",
+      "verification": "TAMPERED"
+    }
+  },
+  "event_id": "evt_1779761822.307105",
+  "timestamp": "2026-05-26T07:47:02.307105"
+}INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+
+===================================
+
+[S6] Merkle checkpoint #1 stored: 8ccc1cdae34073e8b1042b28...
+
+===================================
+ SECURITY EVENT 
+===================================
+{
+  "event_type": "MERKLE_CHECKPOINT",
+  "severity": "LOW",
+  "title": "Merkle Checkpoint Created",
+  "agent_id": "SYSTEM",
+  "message": "Sacred Peach Tree root computed",
+  "metadata": {
+    "merkle_root": "8ccc1cdae34073e8b1042b2884c72cbf970fa929329742c245a4309884f4d3dc",
+    "chain_length": 36
+  },
+  "event_id": "evt_1779761822.307105",
+  "timestamp": "2026-05-26T07:47:02.307105"
+}
+===================================
+
+INFO:     127.0.0.1:52050 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64093 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52483 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55076 - "GET /snake/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56639 - "WebSocket /ws/security-feed" [accepted]
+INFO:     connection open
+[SECURITY BUS] CLIENT CONNECTED
+INFO:     127.0.0.1:65056 - "GET /po/trust/all HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55076 - "GET /snake/checkpoints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64675 - "GET /po/dashboard/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60289 - "GET /po/dashboard/live HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51050 - "GET /po/dashboard/risk/live HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64530 - "GET /snake/merkle-root HTTP/1.1" 200 OK
+
+===================================
+ SNAKE TAMPER DETECTED 
+===================================
+Corrupted Index: 19
+===================================
+
+
+===================================
+ TAMPER DETECTED 
+===================================
+{'valid': False, 'tampered_index': 19, 'entry': {'entry_id': '1cfb159f-c49e-46fd-b285-8f79105e3d3b', 'audit_id': '1cfb159f-c49e-46fd-b285-8f79105e3d3b', 'chain_index': 19, 'timestamp': '2026-05-26T04:46:17.371846+00:00', 'agent_id': '561bddc1-20e9-497b-a8bb-194d2e3a3437', 'action': 'AGENT_REGISTERED', 'status': 'SUCCESS', 'metadata': {'sector': 'banking'}, 'payload_hash': '', 'previous_hash': '29861674ecbff43f93595454c7467bbfdc44ba22ef270005b967234a048b3108', 'current_hash': '1106b9b6330d7fe0ea1dc9788b5b6251411b90d361dcf7da2704d221da1f8879', 'dilithium_signature': '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', 'verification': 'TAMPERED'}}
+===================================
+
+
+===================================
+ SECURITY EVENT 
+===================================
+{
+  "event_type": "TAMPER_DETECTED",
+  "severity": "HIGH",
+  "title": "Audit Chain Tampered",
+  "agent_id": "SYSTEM",
+  "message": "Blockchain integrity violation detected",
+  "metadata": {
+    "tampered_index": 19,
+    "entry": {
+      "entry_id": "1cfb159f-c49e-46fd-b285-8f79105e3d3b",
+      "audit_id": "1cfb159f-c49e-46fd-b285-8f79105e3d3b",
+      "chain_index": 19,
+      "timestamp": "2026-05-26T04:46:17.371846+00:00",
+      "agent_id": "561bddc1-20e9-497b-a8bb-194d2e3a3437",
+      "action": "AGENT_REGISTERED",
+      "status": "SUCCESS",
+      "metadata": {
+        "sector": "banking"
+      },
+      "payload_hash": "",
+      "previous_hash": "29861674ecbff43f93595454c7467bbfdc44ba22ef270005b967234a048b3108",
+      "current_hash": "1106b9b6330d7fe0ea1dc9788b5b6251411b90d361dcf7da2704d221da1f8879",
+      "dilithium_signature": "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",
+      "verification": "TAMPERED"
+    }
+  },
+  "event_id": "evt_1779761882.305628",
+  "timestamp": "2026-05-26T07:48:02.305628"
+}
