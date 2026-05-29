@@ -6,3 +6,5 @@ dist/
 *.pyc
 runtime.txt
 SQA_BUILD_PLAN.md
+*.log
+zap/

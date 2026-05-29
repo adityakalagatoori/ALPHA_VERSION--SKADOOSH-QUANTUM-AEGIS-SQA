@@ -16,6 +16,14 @@ from services.agent_service import (
 router = APIRouter()
 
 # =========================================================
+# PREFLIGHT HANDLER (CORS)
+# =========================================================
+
+@router.options("/agents/register")
+async def preflight_register():
+    return {}
+
+# =========================================================
 # REGISTER AGENT
 # =========================================================
 

@@ -393,17 +393,27 @@ async def emit_security_event(
     ]
 
     if should_log:
-        print("\n===================================")
-        print(" SECURITY EVENT ")
-        print("===================================")
+        # Build a console-safe copy — strip long binary fields from nested metadata
+        def _truncate(obj, depth=0):
+            if depth > 3:
+                return "..."
+            if isinstance(obj, dict):
+                return {
+                    k: ("...truncated" if isinstance(v, str) and len(v) > 120 else _truncate(v, depth + 1))
+                    for k, v in obj.items()
+                }
+            if isinstance(obj, list):
+                return [_truncate(i, depth + 1) for i in obj[:5]]
+            return obj
 
-        print(json.dumps(
-            event,
-            indent=2,
-            default=str
-        ))
-
-        print("===================================\n")
+        console_event = _truncate(dict(event))
+        sev = event.get("severity", "")
+        etype = event.get("event_type", "")
+        title = event.get("title", "")
+        print(f"\n[{sev}] {etype} — {title}")
+        # Only print full JSON for SYSTEM events; others just the one-liner
+        if etype in ("SYSTEM_STARTUP", "SYSTEM_SHUTDOWN"):
+            print(json.dumps(console_event, indent=2, default=str))
 
     # =====================================================
     # WEBSOCKET BROADCAST

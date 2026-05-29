@@ -1,13 +1,17 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Shield, AlertCircle, Eye, EyeOff } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { AuroraBackground } from '@/components/ui/aurora-background'
+import { SparklesText } from '@/components/ui/sparkles-text'
+import { RippleButton } from '@/components/ui/multi-type-ripple-buttons'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { useAuth } from '../hooks/useAuth'
+import '@/styles/kfp-theme.css'
 
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const { signIn } = useAuth()
@@ -15,150 +19,146 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!email || !password) {
+      setError('Fill in both fields, warrior.')
+      return
+    }
     setLoading(true)
     setError('')
-
-    // Demo mode: allow any login
-    if (email && password) {
-      try {
-        // Store demo session in localStorage
-        localStorage.setItem('demo_user', JSON.stringify({ email, id: 'demo-' + Date.now() }))
+    try {
+      const { error: signInError } = await signIn(email, password)
+      if (signInError) {
+        setError('The gate does not recognize you. Check your credentials.')
+      } else {
         navigate('/dashboard')
-        return
-      } catch (err) {
-        setError('Demo login failed')
       }
-    }
-
-    // Try Supabase auth if demo fails
-    const { error: signInError } = await signIn(email, password)
-    if (signInError) {
-      setError('Use any email/password for demo access')
+    } catch {
+      setError('The Jade Palace is momentarily unreachable.')
+    } finally {
       setLoading(false)
-    } else {
-      navigate('/dashboard')
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0e27] via-[#020617] to-[#0d0b1a] text-white flex flex-col items-center justify-center px-6">
-      {/* Background glow effects */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-80 h-80 bg-cyan-600/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-32 -right-32 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="relative w-full max-w-md z-10"
-      >
-        {/* Logo / Branding */}
-        <div className="text-center mb-10">
-          <Link to="/" className="inline-flex items-center gap-3 mb-6 group">
-            <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/20 group-hover:shadow-xl group-hover:shadow-cyan-500/30 transition-all">
-              <Shield size={24} className="text-white font-bold" />
-            </div>
-            <div className="text-left">
-              <div className="text-2xl font-black tracking-widest">SQA</div>
-              <div className="text-xs text-cyan-400/60 font-mono">Dragon Warrior</div>
-            </div>
-          </Link>
-          <h1 className="text-3xl font-black text-white mb-3 tracking-tight">Mission Control</h1>
-          <p className="text-sm text-gray-400">Enterprise security dashboard access</p>
-        </div>
-
-        {/* Demo access hint */}
+    <AuroraBackground
+      className="min-h-screen"
+      style={{ background: 'linear-gradient(135deg, #0a0806 0%, #1a1208 50%, #0a0806 100%)' }}
+    >
+      <div className="w-full flex flex-col items-center justify-center min-h-screen px-4 py-12">
+        {/* Logo */}
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-6 rounded-xl border border-cyan-500/30 bg-cyan-500/10 backdrop-blur px-5 py-3.5 text-xs text-cyan-200"
+          transition={{ duration: 0.6 }}
+          className="mb-10 text-center"
         >
-          <strong className="text-cyan-300">Demo Access:</strong> Use any email/password combination. New users can{' '}
-          <Link to="/request-access" className="text-cyan-400 font-semibold hover:text-cyan-300 underline">request full access</Link>.
+          <Link to="/" className="inline-flex flex-col items-center gap-3 group">
+            <div className="w-24 h-24 rounded-full overflow-hidden group-hover:scale-110 transition-transform duration-300" style={{ boxShadow: '0 0 30px rgba(201,162,39,0.55), 0 0 60px rgba(201,162,39,0.2)' }}>
+              <img src="/sqa-logo.png" alt="SQA" className="w-full h-full object-cover" />
+            </div>
+            <SparklesText
+              text="SQA"
+              colors={{ first: '#c9a227', second: '#f0c040' }}
+              className="text-4xl"
+              sparklesCount={6}
+            />
+            <p className="text-xs tracking-[0.2em]" style={{ color: 'var(--kfp-text-sec)', fontFamily: 'var(--font-heading)' }}>
+              ENTER THE JADE PALACE
+            </p>
+          </Link>
         </motion.div>
 
-        <div className="rounded-2xl border border-white/15 bg-gradient-to-br from-white/[0.05] via-white/[0.02] to-white/[0.01] backdrop-blur-xl p-8 shadow-2xl">
-          {error && (
-            <div className="mb-5 flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
-              <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
-              <span className="text-sm text-red-300">{error}</span>
-            </div>
-          )}
+        {/* Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.15 }}
+          className="w-full max-w-sm p-8 rounded-lg"
+          style={{
+            background: 'radial-gradient(ellipse, #2a1f0a 0%, #0f0b05 100%)',
+            border: '1px solid var(--kfp-border)',
+            boxShadow: '0 0 60px rgba(201,162,39,0.12), 0 24px 64px rgba(0,0,0,0.8)',
+          }}
+        >
+          <h2 className="text-center text-xl mb-6" style={{ color: 'var(--kfp-parchment)', fontFamily: 'var(--font-display)' }}>
+            Warrior Credentials
+          </h2>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-xs text-gray-300 font-bold mb-2.5 tracking-widest uppercase">Email Address</label>
-              <input
-                required type="email"
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-1.5">
+              <Label style={{ color: 'var(--kfp-gold)', fontFamily: 'var(--font-heading)', fontSize: '0.8rem', letterSpacing: '0.1em' }}>
+                Email
+              </Label>
+              <Input
+                type="email"
+                className="kfp-input"
+                placeholder="your@email.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="security@example.com"
-                className="w-full bg-white/[0.03] border border-white/15 rounded-xl px-4 py-3.5 text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/60 focus:bg-white/[0.08] focus:ring-2 focus:ring-cyan-500/20 transition text-sm font-medium"
+                style={{ background: 'rgba(26,18,8,0.8)', borderColor: 'rgba(201,162,39,0.3)', color: 'var(--kfp-parchment)' }}
               />
             </div>
-            <div>
-              <label className="block text-xs text-gray-300 font-bold mb-2.5 tracking-widest uppercase">Password</label>
-              <div className="relative">
-                <input
-                  required
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full bg-white/[0.03] border border-white/15 rounded-xl px-4 py-3.5 pr-11 text-white placeholder-gray-600 focus:outline-none focus:border-cyan-500/60 focus:bg-white/[0.08] focus:ring-2 focus:ring-cyan-500/20 transition text-sm font-medium"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition p-1"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
+
+            <div className="space-y-1.5">
+              <Label style={{ color: 'var(--kfp-gold)', fontFamily: 'var(--font-heading)', fontSize: '0.8rem', letterSpacing: '0.1em' }}>
+                Password
+              </Label>
+              <Input
+                type="password"
+                className="kfp-input"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                style={{ background: 'rgba(26,18,8,0.8)', borderColor: 'rgba(201,162,39,0.3)', color: 'var(--kfp-parchment)' }}
+              />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:from-cyan-500/50 disabled:to-blue-600/50 text-white font-bold py-3.5 rounded-xl transition text-sm flex items-center justify-center gap-3 shadow-lg shadow-cyan-500/20 hover:shadow-xl hover:shadow-cyan-500/30 disabled:shadow-none"
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Authenticating...
-                </>
-              ) : (
-                <>
-                  <Shield size={16} />
-                  Access Mission Control
-                </>
+            <AnimatePresence>
+              {error && (
+                <motion.p
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="text-sm py-2 px-4 rounded"
+                  style={{ color: '#ef4444', background: 'rgba(139,26,26,0.2)', border: '1px solid rgba(139,26,26,0.4)', fontFamily: 'var(--font-body)' }}
+                >
+                  {error}
+                </motion.p>
               )}
-            </button>
+            </AnimatePresence>
+
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <RippleButton
+                variant="default"
+                className="w-full py-3 text-sm font-semibold"
+                disabled={loading}
+                style={{ background: 'var(--kfp-jade)', color: '#000', border: '1px solid rgba(0,255,136,0.4)', borderRadius: '4px' } as React.CSSProperties}
+              >
+                {loading ? 'Verifying identity...' : 'Enter the Gateway'}
+              </RippleButton>
+            </motion.div>
           </form>
 
-          <div className="pt-4 border-t border-white/10">
-            <p className="text-center text-xs text-gray-400">
-              Don't have an account?{' '}
-              <Link to="/request-access" className="text-cyan-400 font-semibold hover:text-cyan-300 transition">
+          <div className="mt-6 pt-5" style={{ borderTop: '1px solid rgba(201,162,39,0.15)' }}>
+            <p className="text-center text-xs" style={{ color: 'var(--kfp-text-sec)', fontFamily: 'var(--font-body)' }}>
+              No scroll yet?{' '}
+              <a href="/#request-access" className="transition-colors" style={{ color: 'var(--kfp-gold)' }}>
                 Request access
-              </Link>
+              </a>
             </p>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Footer Help */}
-        <motion.div
+        <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="text-center mt-8 text-xs text-gray-500"
+          transition={{ delay: 0.5 }}
+          className="mt-8 text-xs text-center"
+          style={{ color: 'rgba(168,152,128,0.4)', fontFamily: 'var(--font-body)' }}
         >
-          <p>Need help? Try the <Link to="/demo" className="text-cyan-400 hover:text-cyan-300 font-semibold">demo mode</Link> with any credentials.</p>
-        </motion.div>
-      </motion.div>
-    </div>
+          <Link to="/" style={{ color: 'rgba(201,162,39,0.4)' }}>â† Return to the valley</Link>
+        </motion.p>
+      </div>
+    </AuroraBackground>
   )
 }

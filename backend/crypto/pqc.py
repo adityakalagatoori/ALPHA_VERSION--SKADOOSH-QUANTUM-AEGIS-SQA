@@ -9,12 +9,7 @@ KYBER_ALGORITHM = "Kyber1024"
 
 SIGNATURE_ALGORITHM = "ML-DSA-65"
 
-print("\n==============================")
-print("SQA PQC CONFIG")
-print("==============================")
-print(f"KYBER ALGORITHM: {KYBER_ALGORITHM}")
-print(f"SIGNATURE ALGORITHM: {SIGNATURE_ALGORITHM}")
-print("==============================\n")
+# PQC config initialized (reduced spam)
 
 # =========================================================
 # KYBER KEYPAIR

@@ -2,6 +2,7 @@ import uuid
 import gc
 import hashlib
 import json
+import threading
 
 from datetime import (
     datetime,
@@ -736,6 +737,59 @@ def blacklist_agent(
     }
 
 # =========================================================
+# BACKGROUND TASK: Persist agent data (non-blocking)
+# =========================================================
+
+def _background_persist_agent(agent_id, agent_name, sector, allowed_actions, token, kyber_keys, dilithium_keys, entropy_metadata):
+    """Run Supabase, ArmorIQ, and audit logging in background thread."""
+    try:
+        # Supabase insert
+        supabase.table("agents").insert({
+            "agent_id": agent_id,
+            "agent_name": agent_name,
+            "sector": sector,
+            "allowed_actions": allowed_actions,
+            "token": token,
+            "is_blacklisted": False,
+            "kyber_algorithm": kyber_keys["algorithm"],
+            "dilithium_algorithm": dilithium_keys["algorithm"],
+            "kyber_public_key": kyber_keys["public_key"],
+            "dilithium_public_key": dilithium_keys["public_key"],
+            "entropy_metadata": entropy_metadata
+        }).execute()
+        print("[DB] ✅ AGENT STORED IN SUPABASE")
+    except Exception as db_error:
+        print("[DB] ⚠️ SUPABASE INSERT FAILED (background):")
+        print(f"     Error: {str(db_error)[:100]}")
+
+    try:
+        # ArmorIQ logging
+        log_agent_registration(
+            agent_id=agent_id,
+            agent_name=agent_name,
+            sector=sector,
+            kyber_algorithm=kyber_keys["algorithm"],
+            dilithium_algorithm=dilithium_keys["algorithm"]
+        )
+        log_entropy_event(
+            agent_id=agent_id,
+            entropy_bits=entropy_metadata["entropy_bits"]
+        )
+    except Exception as armoriq_error:
+        print(f"[ARMORIQ] Background logging failed: {str(armoriq_error)[:100]}")
+
+    try:
+        # Audit event
+        audit_event(
+            agent_id,
+            "AGENT_REGISTERED",
+            "SUCCESS",
+            {"sector": sector}
+        )
+    except Exception as audit_error:
+        print(f"[AUDIT] Background logging failed: {str(audit_error)[:100]}")
+
+# =========================================================
 # REGISTER AGENT
 # =========================================================
 
@@ -762,13 +816,26 @@ def register_agent(
         entropy
     )
 
-    kyber_keys = generate_kyber_keypair()
+    # Generate Kyber and Dilithium keys in parallel (faster)
+    kyber_keys = None
+    dilithium_keys = None
 
-    dilithium_keys = generate_dilithium_keypair()
+    def _gen_kyber():
+        nonlocal kyber_keys
+        kyber_keys = generate_kyber_keypair()
 
-    print(
-        "[M6] PQC KEYS GENERATED"
-    )
+    def _gen_dilithium():
+        nonlocal dilithium_keys
+        dilithium_keys = generate_dilithium_keypair()
+
+    t1 = threading.Thread(target=_gen_kyber, daemon=False)
+    t2 = threading.Thread(target=_gen_dilithium, daemon=False)
+    t1.start()
+    t2.start()
+    t1.join()  # Wait for both to complete
+    t2.join()
+
+    print("[M6] PQC KEYS GENERATED (parallel)")
 
     kyber_enclave_handle = encrypt_private_key(
 
@@ -839,90 +906,15 @@ def register_agent(
             dilithium_enclave_handle,
     }
 
-    try:
+    print("[REGISTRATION] Agent created in memory instantly")
 
-        supabase.table(
-            "agents"
-        ).insert({
-
-            "agent_id":
-                agent_id,
-
-            "agent_name":
-                agent_name,
-
-            "sector":
-                sector,
-
-            "allowed_actions":
-                allowed_actions,
-
-            "token":
-                token,
-
-            "is_blacklisted":
-                False,
-
-            "kyber_algorithm":
-                kyber_keys["algorithm"],
-
-            "dilithium_algorithm":
-                dilithium_keys["algorithm"],
-
-            "kyber_public_key":
-                kyber_keys["public_key"],
-
-            "dilithium_public_key":
-                dilithium_keys["public_key"],
-
-            "entropy_metadata":
-                entropy_metadata
-
-        }).execute()
-
-        print(
-            "[DB] AGENT STORED"
-        )
-
-    except Exception as db_error:
-
-        print(
-            "[DB WARNING]"
-        )
-
-        print(db_error)
-
-    log_agent_registration(
-
-        agent_id=agent_id,
-
-        agent_name=agent_name,
-
-        sector=sector,
-
-        kyber_algorithm=
-            kyber_keys["algorithm"],
-
-        dilithium_algorithm=
-            dilithium_keys["algorithm"]
+    # Spawn background thread for slow operations (Supabase, ArmorIQ, Audit)
+    bg_thread = threading.Thread(
+        target=_background_persist_agent,
+        args=(agent_id, agent_name, sector, allowed_actions, token, kyber_keys, dilithium_keys, entropy_metadata),
+        daemon=True
     )
-
-    log_entropy_event(
-
-        agent_id=agent_id,
-
-        entropy_bits=
-            entropy_metadata["entropy_bits"]
-    )
-
-    audit_event(
-        agent_id,
-        "AGENT_REGISTERED",
-        "SUCCESS",
-        {
-            "sector": sector
-        }
-    )
+    bg_thread.start()
 
     return {
 

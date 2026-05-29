@@ -74,6 +74,16 @@ class TigressSecurityMiddleware(
             )
 
         # =============================================
+        # SKIP GET / HEAD — no body to scan
+        # =============================================
+
+        if request.method in ("GET", "HEAD", "OPTIONS"):
+
+            return await call_next(
+                request
+            )
+
+        # =============================================
         # READ REQUEST BODY
         # =============================================
 

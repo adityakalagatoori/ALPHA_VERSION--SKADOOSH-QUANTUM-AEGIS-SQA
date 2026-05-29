@@ -1,0 +1,180 @@
+/* ============================================================
+   KFP THEME — Kung Fu Panda Part 1 Jade Palace Aesthetics
+   ============================================================ */
+
+:root {
+  --kfp-black:       #0a0806;
+  --kfp-surface:     #1a1208;
+  --kfp-surface-2:   #0f0b05;
+  --kfp-jade:        #4a7c59;
+  --kfp-jade-bright: #00ff88;
+  --kfp-gold:        #c9a227;
+  --kfp-gold-light:  #f0c040;
+  --kfp-red:         #8b1a1a;
+  --kfp-parchment:   #f5e6c8;
+  --kfp-text-sec:    #a89880;
+  --kfp-border:      rgba(201, 162, 39, 0.3);
+  --kfp-glow-jade:   rgba(0, 255, 136, 0.15);
+  --kfp-glow-gold:   rgba(201, 162, 39, 0.2);
+
+  --font-display: 'Cinzel Decorative', serif;
+  --font-heading: 'Cinzel', serif;
+  --font-body:    'Crimson Text', serif;
+  --font-mono:    'JetBrains Mono', monospace;
+}
+
+/* ============================================================
+   KFP CARD — Ancient scroll style
+   ============================================================ */
+
+.kfp-card {
+  background: linear-gradient(135deg, var(--kfp-surface), var(--kfp-surface-2));
+  border: 1px solid var(--kfp-border);
+  box-shadow:
+    inset 0 0 40px rgba(201, 162, 39, 0.05),
+    0 8px 32px rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+}
+
+.kfp-card:hover {
+  border-color: rgba(201, 162, 39, 0.5);
+  box-shadow:
+    inset 0 0 40px rgba(201, 162, 39, 0.1),
+    0 16px 48px rgba(0, 0, 0, 0.8),
+    0 0 20px rgba(201, 162, 39, 0.15);
+}
+
+/* ============================================================
+   FORM INPUTS — KFP styled
+   ============================================================ */
+
+.kfp-input {
+  width: 100%;
+  background: rgba(26, 18, 8, 0.8);
+  border: 1px solid var(--kfp-border);
+  border-radius: 4px;
+  padding: 0.625rem 0.875rem;
+  color: var(--kfp-parchment);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.kfp-input:focus {
+  border-color: var(--kfp-gold);
+  box-shadow: 0 0 0 2px rgba(201, 162, 39, 0.15);
+}
+
+.kfp-input::placeholder {
+  color: var(--kfp-text-sec);
+}
+
+.kfp-input option {
+  background: var(--kfp-surface);
+  color: var(--kfp-parchment);
+}
+
+/* ============================================================
+   BAMBOO DIVIDER
+   ============================================================ */
+
+.bamboo-divider {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--kfp-gold), transparent);
+  margin: 60px auto;
+  width: 60%;
+  position: relative;
+}
+
+.bamboo-divider::before {
+  content: '◆';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--kfp-gold);
+}
+
+.bamboo-divider::after {
+  content: '◆';
+  position: absolute;
+  right: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--kfp-gold);
+}
+
+/* ============================================================
+   TYPOGRAPHY HELPERS
+   ============================================================ */
+
+.font-display  { font-family: var(--font-display); }
+.font-heading  { font-family: var(--font-heading); }
+.font-body     { font-family: var(--font-body); }
+.font-mono-kfp { font-family: var(--font-mono); }
+
+.text-gold      { color: var(--kfp-gold); }
+.text-jade      { color: var(--kfp-jade-bright); }
+.text-parchment { color: var(--kfp-parchment); }
+.text-sec       { color: var(--kfp-text-sec); }
+
+/* ============================================================
+   ANIMATION KEYFRAMES
+   ============================================================ */
+
+@keyframes ember-rise {
+  0%   { transform: translateY(0)     scale(1);   opacity: 0.8; }
+  50%  { transform: translateY(-60px) scale(0.8); opacity: 0.5; }
+  100% { transform: translateY(-120px) scale(0.3); opacity: 0; }
+}
+
+@keyframes jade-pulse {
+  0%, 100% { box-shadow: 0 0 10px var(--kfp-glow-jade); }
+  50%       { box-shadow: 0 0 30px var(--kfp-glow-jade), 0 0 60px rgba(0, 255, 136, 0.1); }
+}
+
+@keyframes gold-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+
+.animate-ember-rise { animation: ember-rise 3s ease-out infinite; }
+.animate-jade-pulse { animation: jade-pulse 2s ease-in-out infinite; }
+.animate-float      { animation: float-gentle 4s ease-in-out infinite; }
+
+/* Shimmer text effect */
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--kfp-gold) 0%,
+    var(--kfp-gold-light) 40%,
+    var(--kfp-gold) 60%,
+    var(--kfp-parchment) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gold-shimmer 3s linear infinite;
+}
+
+/* ============================================================
+   SCROLL BAR — KFP dark theme
+   ============================================================ */
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--kfp-black); }
+::-webkit-scrollbar-thumb {
+  background: var(--kfp-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 162, 39, 0.5);
+}

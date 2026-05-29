@@ -8,7 +8,6 @@ from core.security_event_bus import (
 
 from dotenv import load_dotenv
 
-import requests
 import base64
 import hashlib
 import json
@@ -22,26 +21,10 @@ import re
 load_dotenv()
 
 # =========================================================
-# ARMORCLAW CONFIG
+# ARMORCLAW — loaded lazily via centralized client
 # =========================================================
 
-ARMORCLAW_API_KEY = os.getenv(
-    "ARMORCLAW_API_KEY"
-)
-
-ARMORCLAW_BASE_URL = os.getenv(
-    "ARMORCLAW_BASE_URL"
-)
-
-# =========================================================
-# FAIL CLOSED
-# =========================================================
-
-if not ARMORCLAW_API_KEY:
-
-    raise Exception(
-        "ARMORCLAW_API_KEY_MISSING"
-    )
+ARMORCLAW_API_KEY = os.getenv("ARMORCLAW_API_KEY", "")
 
 # =========================================================
 # SENTENCE TRANSFORMER
@@ -258,140 +241,21 @@ def calculate_semantic_drift(
     )
 
 # =========================================================
-# ARMORCLAW SCAN
+# ARMORCLAW SCAN (via centralized client)
 # =========================================================
 
-def armrclaw_scan(
-    text: str
-):
-
-    headers = {
-
-        "Authorization":
-            f"Bearer {ARMORCLAW_API_KEY}",
-
-        "Content-Type":
-            "application/json"
-    }
-
-    payload = {
-
-        "input": text
-    }
-
-    possible_endpoints = [
-
-        f"{ARMORCLAW_BASE_URL}/api/v1/scan",
-
-        f"{ARMORCLAW_BASE_URL}/scan",
-
-        f"{ARMORCLAW_BASE_URL}/api/scan"
-    ]
-
-    last_error = None
-
-    for endpoint in possible_endpoints:
-
-        try:
-
-            response = requests.post(
-
-                endpoint,
-
-                headers=headers,
-
-                json=payload,
-
-                timeout=15
-            )
-
-            # =============================================
-            # SUCCESS
-            # =============================================
-
-            if response.status_code == 200:
-
-                data = response.json()
-
-                return {
-
-                    "risk_score":
-                        data.get(
-                            "risk_score",
-                            75
-                        ),
-
-                    "raw":
-                        data
-                }
-
-            # =============================================
-            # AUTH FAILURE OR ENDPOINT UNAVAILABLE
-            # =============================================
-
-            if response.status_code in [
-                401,
-                403,
-                404
-            ]:
-
-                return {
-
-                    "risk_score": 25,
-
-                    "raw": {
-
-                        "status":
-                             "ARMORCLAW_FALLBACK",
-
-                         "fallback":
-                              True
-                   }
-                }
-
-            # =============================================
-            # SAVE ERROR
-            # =============================================
-
-            last_error = (
-
-                f"{endpoint} -> "
-
-                f"{response.status_code}"
-            )
-
-        except Exception as endpoint_error:
-
-            print(
-                "\n[TIGRESS ENDPOINT ERROR]"
-            )
-
-            print(endpoint_error)
-
-            last_error = str(
-                endpoint_error
-            )
-
-    # =============================================
-    # FALLBACK MODE (for development)
-    # =============================================
-
+def armorclaw_scan(text: str) -> dict:
+    """Scan text through ArmorClaw. Returns {risk_score, raw}."""
+    from services.armorclaw_client import scan_text
+    result = scan_text(text)
     return {
-
-        "risk_score": 25,
-
-        "raw": {
-
-            "status":
-                "ARMORCLAW_DEVELOPMENT_FALLBACK",
-
-            "fallback":
-                True,
-
-            "last_error":
-                str(last_error)
-        }
+        "risk_score": result.get("risk_score", 0),
+        "raw": result,
     }
+
+
+# Keep old name as alias so any remaining callers don't crash
+armrclaw_scan = armorclaw_scan
 
 # =========================================================
 # MAIN TIGRESS ANALYZER
@@ -515,12 +379,15 @@ async def analyze_request(
         )
 
     # =====================================================
-    # ARMORCLAW SCAN
+    # ARMORCLAW SCAN — only for non-trivial payloads
     # =====================================================
 
-    armorclaw_result = armrclaw_scan(
+    # Skip ArmorClaw for empty/trivial payloads (dashboard polls, health checks)
+    _has_content = len(payload_text) > 10 and payload_text not in ("{}", "[]", "null", "")
+
+    armorclaw_result = armorclaw_scan(
         payload_text
-    )
+    ) if _has_content else {"risk_score": 0, "raw": {}}
 
     armorclaw_risk = armorclaw_result.get(
         "risk_score",

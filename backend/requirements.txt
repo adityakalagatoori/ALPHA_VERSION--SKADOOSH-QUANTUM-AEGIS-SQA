@@ -14,3 +14,6 @@ shap
 xgboost
 google-generativeai
 resend
+httpx
+armoriq-sdk
+python-dateutil

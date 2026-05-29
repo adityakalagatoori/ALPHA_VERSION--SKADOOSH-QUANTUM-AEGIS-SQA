@@ -7,7 +7,17 @@ from contextlib import asynccontextmanager
 
 import asyncio
 import json
+import logging
 import numpy as np
+
+# ── Silence noisy polling routes from uvicorn access log ──────────────────────
+class _SilencePollingFilter(logging.Filter):
+    _MUTED = {"/health", "/v2/po/trust-scores"}
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return not any(p in msg for p in self._MUTED)
+
+logging.getLogger("uvicorn.access").addFilter(_SilencePollingFilter())
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -190,6 +200,17 @@ async def lifespan(app: FastAPI):
     print("===================================\n")
 
     # =====================================================
+    # START KEYPAIR POOL (for fast M1 registration)
+    # =====================================================
+
+    try:
+        from background.keypair_pool import start_keypair_pool
+        asyncio.create_task(start_keypair_pool())
+        print("[KEYPAIR POOL] Background pool started (target: 20 keypairs)")
+    except Exception as kp_err:
+        print(f"[KEYPAIR POOL NOT READY] {kp_err}")
+
+    # =====================================================
     # START SNAKE TAMPER MONITOR
     # =====================================================
 
@@ -329,7 +350,7 @@ app.add_middleware(
 
     CORSMiddleware,
 
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174", "http://localhost:3000"],
 
     allow_credentials=True,
 
@@ -554,6 +575,80 @@ try:
     print("[TERMINAL] Terminal WebSocket active at /terminal/ws/{session_id}")
 except Exception as terminal_error:
     print(f"[TERMINAL NOT READY] {terminal_error}")
+
+# =========================================================
+# V2 ROUTES — NEW DASHBOARD (all 47 features)
+# =========================================================
+
+try:
+    from routes.v2_agents import router as v2_agents_router
+    app.include_router(v2_agents_router)
+    print("[V2] MONKEY routes active (M1-M7)")
+except Exception as e:
+    print(f"[V2 MONKEY NOT READY] {e}")
+
+try:
+    from routes.v2_tokens import router as v2_tokens_router
+    app.include_router(v2_tokens_router)
+    print("[V2] CRANE routes active (C1-C7)")
+except Exception as e:
+    print(f"[V2 CRANE NOT READY] {e}")
+
+try:
+    from routes.v2_audit import router as v2_audit_router
+    app.include_router(v2_audit_router)
+    print("[V2] SNAKE routes active (S1-S7)")
+except Exception as e:
+    print(f"[V2 SNAKE NOT READY] {e}")
+
+try:
+    from routes.v2_behavior import router as v2_behavior_router
+    app.include_router(v2_behavior_router)
+    print("[V2] MANTIS routes active (A1-A9)")
+except Exception as e:
+    print(f"[V2 MANTIS NOT READY] {e}")
+
+try:
+    from routes.v2_tigress import router as v2_tigress_router
+    app.include_router(v2_tigress_router)
+    print("[V2] TIGRESS routes active (T1-T6)")
+except Exception as e:
+    print(f"[V2 TIGRESS NOT READY] {e}")
+
+try:
+    from routes.v2_po import router as v2_po_router
+    app.include_router(v2_po_router)
+    print("[V2] PO routes active (P1-P11)")
+except Exception as e:
+    print(f"[V2 PO NOT READY] {e}")
+
+try:
+    from routes.v2_mirror import router as v2_mirror_router
+    app.include_router(v2_mirror_router)
+    print("[V2] MIRROR TEST routes active (11 attacks)")
+except Exception as e:
+    print(f"[V2 MIRROR NOT READY] {e}")
+
+try:
+    from routes.v2_case_file import router as v2_case_file_router
+    app.include_router(v2_case_file_router)
+    print("[V2] CASE FILE routes active (forensic accountability)")
+except Exception as e:
+    print(f"[V2 CASE FILE NOT READY] {e}")
+
+try:
+    from routes.v2_compliance import router as v2_compliance_router
+    app.include_router(v2_compliance_router)
+    print("[V2] COMPLIANCE routes active (SOC2/NIST/GDPR/ISO27001)")
+except Exception as e:
+    print(f"[V2 COMPLIANCE NOT READY] {e}")
+
+try:
+    from routes.v2_sdk_demo import router as v2_sdk_demo_router
+    app.include_router(v2_sdk_demo_router)
+    print("[V2] SDK DEMO routes active (/v2/sdk/demo)")
+except Exception as e:
+    print(f"[V2 SDK DEMO NOT READY] {e}")
 
 # =========================================================
 # ROOT

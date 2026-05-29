@@ -43,48 +43,16 @@ AUDIT_SIGNING_KEY = None
 AUDIT_VERIFYING_KEY = None
 
 def load_or_create_audit_key():
-    """Load persisted Dilithium-3 key or create new one."""
+    """Generate a Dilithium-3 (ML-DSA-65) signing key in memory for this session."""
     global AUDIT_SIGNING_KEY, AUDIT_VERIFYING_KEY
 
     try:
-        # Try to load active key from Supabase
-        result = supabase.table("audit_keys").select("*").eq("is_active", True).limit(1).execute()
-
-        if result.data and len(result.data) > 0:
-            key_record = result.data[0]
-            public_key_bytes = base64.b64decode(key_record["public_key"])
-            private_key_bytes = base64.b64decode(key_record["private_key"])
-
-            print("[S2] AUDIT KEY LOADED from Supabase")
-            AUDIT_SIGNING_KEY = private_key_bytes
-            AUDIT_VERIFYING_KEY = public_key_bytes
-            return
-
-    except Exception as e:
-        print(f"[S2] Warning loading audit key: {e}")
-
-    # Generate new key
-    try:
-        # liboqs API: generate_keypair() returns the PUBLIC key,
-        # the secret key is held internally and exported separately.
         signer = oqs.Signature("ML-DSA-65")
         public_key = signer.generate_keypair()
         secret_key = signer.export_secret_key()
 
         if public_key is None or secret_key is None:
             raise ValueError("Failed to generate keypair - keys are None")
-
-        public_key_b64 = base64.b64encode(public_key).decode()
-        secret_key_b64 = base64.b64encode(secret_key).decode()
-
-        try:
-            supabase.table("audit_keys").insert({
-                "public_key": public_key_b64,
-                "private_key": secret_key_b64,
-                "is_active": True
-            }).execute()
-        except Exception as db_error:
-            print(f"[S2] Warning: Could not persist to Supabase: {db_error}")
 
         AUDIT_SIGNING_KEY = secret_key
         AUDIT_VERIFYING_KEY = public_key
@@ -93,7 +61,6 @@ def load_or_create_audit_key():
 
     except Exception as e:
         print(f"[S2] ERROR creating audit key: {e}")
-        # Don't raise - allow system to continue with degraded audit functionality
         AUDIT_SIGNING_KEY = None
         AUDIT_VERIFYING_KEY = None
 
@@ -303,15 +270,14 @@ def create_audit_log(
     # =====================================================
 
     try:
-        supabase.table("audit_chain").insert({
-            "entry_id": entry_id,
+        supabase.table("audit_logs").insert({
             "agent_id": agent_id,
-            "action": action,
-            "status": status,
-            "metadata": metadata,
+            "action_type": action,
+            "payload": {"action": action, "status": status, "metadata": metadata},
+            "prev_hash": previous_hash,
             "current_hash": current_hash,
-            "previous_hash": previous_hash,
-            "dilithium_signature": audit_signature
+            "dilithium_sig": audit_signature,
+            "tampered": False,
         }).execute()
     except Exception as e:
         print(f"[S1] Supabase insert error: {e}")
@@ -381,24 +347,28 @@ def load_chain_from_db():
     """Restore audit chain from Supabase on module init/after restart."""
     global AUDIT_CHAIN
 
+    # Clear existing data
+    AUDIT_CHAIN.clear()
+
     try:
-        result = supabase.table("audit_chain").select("*").order("created_at", desc=False).execute()
+        result = supabase.table("audit_logs").select("*").order("timestamp", desc=False).execute()
 
         if result.data:
             for row in result.data:
+                payload = row.get("payload") or {}
                 entry = {
-                    "entry_id": row.get("entry_id"),
-                    "audit_id": row.get("entry_id"),
+                    "entry_id": row.get("log_id"),
+                    "audit_id": row.get("log_id"),
                     "chain_index": len(AUDIT_CHAIN) + 1,
-                    "timestamp": row.get("created_at"),
-                    "agent_id": row.get("agent_id"),
-                    "action": row.get("action"),
-                    "status": row.get("status"),
-                    "metadata": row.get("metadata", {}),
+                    "timestamp": row.get("timestamp"),
+                    "agent_id": str(row.get("agent_id", "")),
+                    "action": row.get("action_type") or payload.get("action", ""),
+                    "status": payload.get("status", ""),
+                    "metadata": payload.get("metadata", {}),
                     "payload_hash": "",
-                    "previous_hash": row.get("previous_hash"),
-                    "current_hash": row.get("current_hash"),
-                    "dilithium_signature": row.get("dilithium_signature"),
+                    "previous_hash": row.get("prev_hash", "GENESIS_BLOCK"),
+                    "current_hash": row.get("current_hash", ""),
+                    "dilithium_signature": row.get("dilithium_sig"),
                     "verification": "VALID"
                 }
                 AUDIT_CHAIN.append(entry)
@@ -462,16 +432,6 @@ def verify_audit_chain():
         ):
 
             current["verification"] = "TAMPERED"
-
-            print("\n===================================")
-            print(" SNAKE TAMPER DETECTED ")
-            print("===================================")
-
-            print(
-                f"Corrupted Index: {current['chain_index']}"
-            )
-
-            print("===================================\n")
 
             return {
 

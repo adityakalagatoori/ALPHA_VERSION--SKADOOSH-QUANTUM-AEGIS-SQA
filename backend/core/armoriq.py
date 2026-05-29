@@ -448,6 +448,295 @@ def log_signature_failure(agent_id: str):
 # BLACKLIST EVENT
 # =========================================================
 
+def log_audit_entry(agent_id: str, action: str, hash_val: str, timestamp: str):
+    """
+    Log an audit chain entry to ArmorIQ — shows in dashboard as an audit event.
+    S1: Called when a SHA-3-256 entry is written to the SNAKE chain.
+    """
+    print("\n==============================")
+    print(" ARMORIQ AUDIT ENTRY ")
+    print("==============================")
+    print(f"agent_id: {agent_id}")
+    print(f"action: {action}")
+    print(f"hash: {hash_val[:16]}...")
+    try:
+        plan_capture = client.capture_plan(
+            llm="sqa-snake-agent",
+            prompt=f"SQA SNAKE: Immutable audit log entry — action={action} agent={agent_id} hash={hash_val[:16]}",
+            plan={
+                "goal": "Write SHA-3-256 immutable audit log entry to chain",
+                "steps": [
+                    {"mcp": "sqa", "action": "compute_sha3_hash", "params": {"agent_id": agent_id, "action": action}},
+                    {"mcp": "sqa", "action": "chain_audit_entry", "params": {"hash": hash_val[:32], "timestamp": timestamp}},
+                    {"mcp": "sqa", "action": "sign_with_dilithium", "params": {"algorithm": "ML-DSA-65"}}
+                ]
+            },
+            metadata={"event_type": "audit_log_entry", "action": action, "hash_preview": hash_val[:16]}
+        )
+        intent_token = client.get_intent_token(plan_capture, validity_seconds=300)
+        print(f"[ARMORIQ] Audit entry logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        if SNAKE_AVAILABLE:
+            try:
+                create_audit_log(agent_id=agent_id, action=action, status="SUCCESS",
+                                 metadata={"hash": hash_val[:32], "timestamp": timestamp})
+            except Exception as snake_error:
+                print(f"[S5] SNAKE write error: {snake_error}")
+        print("==============================\n")
+    except Exception as e:
+        print(f"[ARMORIQ WARNING] {e}")
+        print("==============================\n")
+
+
+def log_token_issued(agent_id: str, allowed_actions: list, expires_at: str):
+    """
+    Log a CRANE capability token issuance to ArmorIQ.
+    C1: Called when a JWT + Dilithium-3 token is minted for an agent.
+    """
+    print("\n==============================")
+    print(" ARMORIQ TOKEN ISSUED ")
+    print("==============================")
+    print(f"agent_id: {agent_id}")
+    print(f"allowed_actions: {allowed_actions}")
+    print(f"expires_at: {expires_at}")
+    try:
+        plan_capture = client.capture_plan(
+            llm="sqa-crane-agent",
+            prompt=f"SQA CRANE: Capability token issued — agent={agent_id} scope={allowed_actions}",
+            plan={
+                "goal": "Issue JWT + Dilithium-3 capability token for AI agent",
+                "steps": [
+                    {"mcp": "sqa", "action": "issue_jwt_token", "params": {"agent_id": agent_id, "scope": allowed_actions}},
+                    {"mcp": "sqa", "action": "sign_with_dilithium", "params": {"algorithm": "ML-DSA-65"}},
+                    {"mcp": "sqa", "action": "register_token_policy", "params": {"expires_at": expires_at}}
+                ]
+            },
+            metadata={"event_type": "capability_token_issued", "scope": allowed_actions, "expires_at": expires_at}
+        )
+        intent_token = client.get_intent_token(plan_capture, validity_seconds=300)
+        print(f"[ARMORIQ] Token issuance logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        if SNAKE_AVAILABLE:
+            try:
+                create_audit_log(agent_id=agent_id, action="TOKEN_ISSUED", status="SUCCESS",
+                                 metadata={"scope": allowed_actions, "expires_at": expires_at})
+            except Exception as snake_error:
+                print(f"[S5] SNAKE write error: {snake_error}")
+        print("==============================\n")
+    except Exception as e:
+        print(f"[ARMORIQ WARNING] {e}")
+        print("==============================\n")
+
+
+def log_scope_violation(agent_id: str, action: str, allowed_actions: list):
+    """
+    Log an out-of-scope action block to ArmorIQ — SECURITY ALERT.
+    C2: Called when an agent attempts an action outside its token scope.
+    """
+    print("\n==============================")
+    print(" ARMORIQ SCOPE VIOLATION ")
+    print("==============================")
+    print(f"agent_id: {agent_id}")
+    print(f"blocked_action: {action}")
+    print(f"token_scope: {allowed_actions}")
+    print("threat_level: HIGH")
+    try:
+        plan_capture = client.capture_plan(
+            llm="sqa-crane-agent",
+            prompt=f"SQA SECURITY ALERT: Out-of-scope action blocked — agent={agent_id} attempted={action} scope={allowed_actions}",
+            plan={
+                "goal": "Block out-of-scope AI agent action and alert",
+                "steps": [
+                    {"mcp": "sqa", "action": "check_token_scope", "params": {"action": action, "scope": allowed_actions}},
+                    {"mcp": "sqa", "action": "block_out_of_scope_action", "params": {"action": action, "threat_level": "HIGH"}},
+                    {"mcp": "sqa", "action": "emit_scope_violation_alert", "params": {"severity": "HIGH"}}
+                ]
+            },
+            metadata={"event_type": "scope_violation", "blocked_action": action, "token_scope": allowed_actions, "threat_level": "HIGH"}
+        )
+        intent_token = client.get_intent_token(plan_capture, validity_seconds=300)
+        print(f"[ARMORIQ] Scope violation logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        if SNAKE_AVAILABLE:
+            try:
+                create_audit_log(agent_id=agent_id, action=f"SCOPE_VIOLATION:{action}", status="BLOCKED",
+                                 metadata={"blocked_action": action, "scope": allowed_actions, "threat_level": "HIGH"})
+            except Exception as snake_error:
+                print(f"[S5] SNAKE write error: {snake_error}")
+        print("==============================\n")
+    except Exception as e:
+        print(f"[ARMORIQ WARNING] {e}")
+        print("==============================\n")
+
+
+def log_tamper_detected(log_id: str, original_hash: str):
+    """
+    Log tamper detection to ArmorIQ — CRITICAL security alert.
+    S4: Called when audit log tampering is detected or simulated.
+    Shows as BLOCKED intent plan in app.armoriq.ai/armorclaw.
+    """
+    print("\n==============================")
+    print(" ARMORIQ TAMPER DETECTED ")
+    print("==============================")
+    print(f"log_id: {log_id}")
+    print(f"original_hash: {original_hash[:16]}...")
+    print("threat_level: CRITICAL")
+    try:
+        plan_capture = client.capture_plan(
+            llm="sqa-snake-agent",
+            prompt=f"SQA CRITICAL ALERT: Audit log TAMPERED — log_id={log_id[:12]} hash corrupted — forensic chain broken",
+            plan={
+                "goal": "Detect and report audit log tampering attack",
+                "steps": [
+                    {"mcp": "sqa", "action": "detect_hash_corruption", "params": {"log_id": log_id[:16], "original_hash": original_hash[:16]}},
+                    {"mcp": "sqa", "action": "alert_soc_team", "params": {"severity": "CRITICAL", "type": "TAMPER_DETECTED"}},
+                    {"mcp": "sqa", "action": "freeze_audit_chain", "params": {"reason": "TAMPER_DETECTED"}}
+                ]
+            },
+            metadata={"event_type": "tamper_detected", "log_id": log_id[:16], "threat_level": "CRITICAL"}
+        )
+        intent_token = client.get_intent_token(plan_capture, validity_seconds=3600)
+        print(f"[ARMORIQ] Tamper alert logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        print("==============================\n")
+    except Exception as e:
+        print(f"[ARMORIQ WARNING] {e}")
+        print("==============================\n")
+
+
+def log_merkle_checkpoint(root_hash: str, entry_count: int, checkpoint_id: str):
+    """
+    Log Merkle checkpoint to ArmorIQ — Sacred Peach Tree anchored.
+    S6: Called when a new Merkle tree root is computed and stored.
+    Shows as EXECUTING intent plan in platform.armoriq.ai Intent Plans.
+    """
+    print("\n==============================")
+    print(" ARMORIQ MERKLE CHECKPOINT ")
+    print("==============================")
+    print(f"root_hash: {root_hash[:16]}...")
+    print(f"entry_count: {entry_count}")
+    try:
+        plan_capture = client.capture_plan(
+            llm="sqa-snake-agent",
+            prompt=f"SQA SNAKE: Merkle checkpoint anchored — root={root_hash[:16]} entries={entry_count} checkpoint={checkpoint_id[:12]}",
+            plan={
+                "goal": "Anchor audit chain to cryptographic Merkle root (Sacred Peach Tree)",
+                "steps": [
+                    {"mcp": "sqa", "action": "compute_merkle_root", "params": {"entry_count": entry_count}},
+                    {"mcp": "sqa", "action": "store_merkle_checkpoint", "params": {"root": root_hash[:32], "checkpoint_id": checkpoint_id[:16]}},
+                    {"mcp": "sqa", "action": "verify_tree_integrity", "params": {"algorithm": "SHA3-256"}}
+                ]
+            },
+            metadata={"event_type": "merkle_checkpoint", "root_hash": root_hash[:16], "entry_count": entry_count}
+        )
+        intent_token = client.get_intent_token(plan_capture, validity_seconds=3600)
+        print(f"[ARMORIQ] Merkle checkpoint logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        print("==============================\n")
+    except Exception as e:
+        print(f"[ARMORIQ WARNING] {e}")
+        print("==============================\n")
+
+
+def log_honeypot_routed(agent_id: str, action_type: str, risk_score: int):
+    """
+    Log honeypot routing to ArmorIQ — agent silently isolated.
+    A3/A7: Called when MANTIS risk score exceeds threshold (>=90).
+    Shows as BLOCKED intent plan in platform.armoriq.ai Intent Plans.
+    """
+    print("\n==============================")
+    print(" ARMORIQ HONEYPOT ROUTED ")
+    print("==============================")
+    print(f"agent_id: {agent_id}")
+    print(f"action_type: {action_type}")
+    print(f"risk_score: {risk_score}")
+    print("threat_level: HIGH")
+    try:
+        plan_capture = client.capture_plan(
+            llm="sqa-mantis-agent",
+            prompt=f"SQA MANTIS: Agent silently routed to HONEYPOT — agent={agent_id[:16]} action={action_type} risk_score={risk_score}",
+            plan={
+                "goal": "Isolate high-risk AI agent into honeypot decoy environment",
+                "steps": [
+                    {"mcp": "sqa", "action": "evaluate_risk_threshold", "params": {"risk_score": risk_score, "threshold": 90}},
+                    {"mcp": "sqa", "action": "route_to_honeypot", "params": {"agent_id": agent_id[:16], "action": action_type}},
+                    {"mcp": "sqa", "action": "serve_decoy_response", "params": {"real_system": "PROTECTED"}}
+                ]
+            },
+            metadata={"event_type": "honeypot_routed", "agent_id": agent_id[:16], "risk_score": risk_score, "threat_level": "HIGH"}
+        )
+        intent_token = client.get_intent_token(plan_capture, validity_seconds=3600)
+        print(f"[ARMORIQ] Honeypot routing logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        print("==============================\n")
+    except Exception as e:
+        print(f"[ARMORIQ WARNING] {e}")
+        print("==============================\n")
+
+
+def log_gateway_kill(agent_id: str, kill_reason: str, message_preview: str):
+    """
+    Log PO Dragon Warrior KILL verdict to ArmorIQ.
+    P3: Called when the gateway issues a KILL verdict (request blocked).
+    Shows as BLOCKED intent plan in platform.armoriq.ai Intent Plans.
+    """
+    print("\n==============================")
+    print(" ARMORIQ GATEWAY KILL ")
+    print("==============================")
+    print(f"agent_id: {agent_id}")
+    print(f"kill_reason: {kill_reason}")
+    print(f"message_preview: {message_preview[:50]}")
+    print("threat_level: HIGH")
+    try:
+        plan_capture = client.capture_plan(
+            llm="sqa-po-agent",
+            prompt=f"SQA PO GATEWAY: Request KILLED — agent={agent_id[:16]} reason={kill_reason[:50]}",
+            plan={
+                "goal": "Block and forensically log malicious request at Dragon Warrior gateway",
+                "steps": [
+                    {"mcp": "sqa", "action": "run_5_warrior_checks", "params": {"agent_id": agent_id[:16]}},
+                    {"mcp": "sqa", "action": "issue_kill_verdict", "params": {"reason": kill_reason[:50]}},
+                    {"mcp": "sqa", "action": "log_kill_event", "params": {"threat_level": "HIGH"}}
+                ]
+            },
+            metadata={"event_type": "gateway_kill", "agent_id": agent_id[:16], "kill_reason": kill_reason[:50], "threat_level": "HIGH"}
+        )
+        intent_token = client.get_intent_token(plan_capture, validity_seconds=3600)
+        print(f"[ARMORIQ] Gateway KILL logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        print("==============================\n")
+    except Exception as e:
+        print(f"[ARMORIQ WARNING] {e}")
+        print("==============================\n")
+
+
+def log_case_file_generated(agent_id: str, case_id: str, compliance_score: str):
+    """
+    Log forensic case file generation to ArmorIQ.
+    CF: Called when a court-admissible SQA Case File is generated.
+    Shows as EXECUTING intent plan in platform.armoriq.ai Intent Plans.
+    """
+    print("\n==============================")
+    print(" ARMORIQ CASE FILE GENERATED ")
+    print("==============================")
+    print(f"agent_id: {agent_id}")
+    print(f"case_id: {case_id[:12]}")
+    print(f"compliance_score: {compliance_score}")
+    try:
+        plan_capture = client.capture_plan(
+            llm="sqa-forensic-agent",
+            prompt=f"SQA: Forensic Case File generated — agent={agent_id[:16]} case_id={case_id[:12]} compliance={compliance_score}",
+            plan={
+                "goal": "Generate court-admissible forensic accountability report for AI agent",
+                "steps": [
+                    {"mcp": "sqa", "action": "collect_snake_audit_chain", "params": {"agent_id": agent_id[:16]}},
+                    {"mcp": "sqa", "action": "verify_chain_integrity", "params": {"algorithm": "SHA3-256"}},
+                    {"mcp": "sqa", "action": "generate_compliance_report", "params": {"case_id": case_id[:16], "score": compliance_score}}
+                ]
+            },
+            metadata={"event_type": "case_file_generated", "agent_id": agent_id[:16], "case_id": case_id[:16], "compliance_score": compliance_score}
+        )
+        intent_token = client.get_intent_token(plan_capture, validity_seconds=3600)
+        print(f"[ARMORIQ] Case file event logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        print("==============================\n")
+    except Exception as e:
+        print(f"[ARMORIQ WARNING] {e}")
+        print("==============================\n")
+
+
 def log_blacklist_event(agent_id: str):
     """
     Log agent blacklist to ArmorIQ — CRITICAL ALERT.

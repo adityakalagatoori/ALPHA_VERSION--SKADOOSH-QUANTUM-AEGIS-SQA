@@ -13,7 +13,9 @@ from services.audit_service import (
 
     tamper_audit_entry,
 
-    verify_audit_chain
+    verify_audit_chain,
+
+    load_chain_from_db
 )
 
 router = APIRouter(
@@ -119,3 +121,16 @@ async def tamper_demo(
     )
 
     return result
+
+# =========================================================
+# S1 RELOAD CHAIN (ADMIN)
+# =========================================================
+
+@router.post("/reload-chain")
+async def reload_chain():
+    """Admin endpoint: Reload audit chain from database."""
+    load_chain_from_db()
+    return {
+        "status": "RELOADED",
+        "message": "Audit chain reloaded from database"
+    }

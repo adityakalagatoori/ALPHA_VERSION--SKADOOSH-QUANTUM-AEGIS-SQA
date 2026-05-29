@@ -90,6 +90,19 @@ export function EmbeddedTerminal({
 
       let line = "";
 
+      // Handle paste from clipboard
+      const handlePaste = async (e: ClipboardEvent) => {
+        e.preventDefault();
+        const text = await navigator.clipboard.readText();
+        line += text;
+        term.write(text);
+      };
+
+      const termElement = termDivRef.current;
+      if (termElement) {
+        termElement.addEventListener("paste", handlePaste as unknown as EventListener);
+      }
+
       term.onData((data) => {
         if (data === "\r" || data === "\n") {
           term.write("\r\n");
