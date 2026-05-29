@@ -1,82 +1,92 @@
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.responses import Response
 import json
 from datetime import datetime
 
 # =========================================================
 # HONEYPOT ISOLATION MIDDLEWARE (A7/A8)
+# Pure ASGI — avoids BaseHTTPMiddleware body-consumption bug.
 # =========================================================
 
-HONEYPOT_AGENTS = {}
+HONEYPOT_AGENTS: dict = {}
 
-class HoneypotMiddleware(BaseHTTPMiddleware):
+
+class HoneypotMiddleware:
     """
-    A7: Auto-route agents with score > 90 to honeypot
-    A8: Isolation chamber — fake responses, real system untouched
+    A7: Auto-route agents with score > 90 to honeypot.
+    A8: Isolation chamber — fake responses, real system untouched.
+    Pure ASGI to avoid body stream consumption.
     """
 
-    async def dispatch(self, request: Request, call_next):
-        # Only intercept if agent is in honeypot
-        agent_id = request.headers.get("X-Agent-ID")
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        headers = dict(scope.get("headers", []))
+        agent_id = headers.get(b"x-agent-id", b"").decode("utf-8", errors="ignore") or None
 
         if agent_id and agent_id in HONEYPOT_AGENTS:
-            # Agent is isolated — return fake response
-            honeypot_entry = HONEYPOT_AGENTS[agent_id]
-            honeypot_entry["requests_captured"] += 1
-            honeypot_entry["last_request"] = str(datetime.utcnow())
+            # Agent is isolated — drain body, return fake response
+            body = b""
+            more_body = True
+            while more_body:
+                message = await receive()
+                body += message.get("body", b"")
+                more_body = message.get("more_body", False)
 
-            # Capture request details
-            body = await request.body()
-            honeypot_entry["last_endpoint"] = request.url.path
-            honeypot_entry["last_method"] = request.method
+            entry = HONEYPOT_AGENTS[agent_id]
+            entry["requests_captured"] += 1
+            entry["last_request"] = datetime.utcnow().isoformat()
+            entry["last_endpoint"] = scope.get("path", "")
+            entry["last_method"] = scope.get("method", "")
 
-            # Return fake success response (real system never touched)
             fake_response = {
                 "status": "success",
                 "message": "Action completed successfully",
                 "data": {
-                    "id": f"fake_{honeypot_entry['requests_captured']}",
-                    "timestamp": str(datetime.utcnow()),
-                    "records_affected": 0
-                }
+                    "id": f"fake_{entry['requests_captured']}",
+                    "timestamp": entry["last_request"],
+                    "records_affected": 0,
+                },
             }
-
-            return Response(
+            response = Response(
                 content=json.dumps(fake_response),
                 status_code=200,
-                media_type="application/json"
+                media_type="application/json",
             )
+            await response(scope, receive, send)
+            return
 
-        # Normal request processing
-        return await call_next(request)
+        # Normal request — pass through untouched
+        await self.app(scope, receive, send)
 
 
 def add_to_honeypot(agent_id: str, anomaly_score: float):
-    """Add agent to honeypot isolation when score > 90."""
     HONEYPOT_AGENTS[agent_id] = {
         "agent_id": agent_id,
         "anomaly_score": anomaly_score,
-        "isolated_at": str(datetime.utcnow()),
+        "isolated_at": datetime.utcnow().isoformat(),
         "requests_captured": 0,
         "last_request": None,
         "last_endpoint": None,
-        "last_method": None
+        "last_method": None,
     }
     print(f"[HONEYPOT] Agent {agent_id} isolated (score: {anomaly_score})")
 
 
 def remove_from_honeypot(agent_id: str):
-    """Remove agent from honeypot."""
     if agent_id in HONEYPOT_AGENTS:
         del HONEYPOT_AGENTS[agent_id]
         print(f"[HONEYPOT] Agent {agent_id} removed from isolation")
 
 
-def get_honeypot_status(agent_id: str):
-    """Get honeypot status for agent."""
+def get_honeypot_status(agent_id: str) -> dict:
     return HONEYPOT_AGENTS.get(agent_id, {})
 
 
-def get_all_honeypot_agents():
-    """Get all isolated agents."""
+def get_all_honeypot_agents() -> list:
     return list(HONEYPOT_AGENTS.values())
