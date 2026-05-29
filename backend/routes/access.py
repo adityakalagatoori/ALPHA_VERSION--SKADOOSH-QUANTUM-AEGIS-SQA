@@ -131,6 +131,26 @@ async def approve_access_request(request_id: str, x_admin_key: Optional[str] = H
         "reviewed_at": datetime.utcnow().isoformat()
     }).eq("id", request_id).execute()
 
+    # Create Supabase Auth user so they can actually log in
+    auth_created = False
+    try:
+        from services.db import get_admin_db
+        admin_supabase = get_admin_db()
+        admin_supabase.auth.admin.create_user({
+            "email": request_data["email"],
+            "password": temp_password,
+            "email_confirm": True,
+            "user_metadata": {
+                "full_name": request_data["full_name"],
+                "organization": request_data["organization"],
+                "sector": request_data.get("sector", ""),
+            }
+        })
+        auth_created = True
+        print(f"[ACCESS] Supabase Auth user created for {request_data['email']}")
+    except Exception as e:
+        print(f"[ACCESS] Supabase Auth create error: {e}")
+
     # Create approved user record
     existing_user = supabase.table("approved_users").select("id").eq("email", request_data["email"]).execute()
     if not existing_user.data:
@@ -160,8 +180,48 @@ async def approve_access_request(request_id: str, x_admin_key: Optional[str] = H
         "email": request_data["email"],
         "full_name": request_data["full_name"],
         "temp_password": temp_password,
+        "auth_user_created": auth_created,
         "email_sent": email_sent,
         "message": f"User approved. Temp password: {temp_password}"
+    }
+
+
+# =========================================================
+# RESEND APPROVAL EMAIL (admin only)
+# =========================================================
+
+@router.post("/requests/{request_id}/resend-email")
+async def resend_approval_email(request_id: str, x_admin_key: Optional[str] = Header(None)):
+    require_admin(x_admin_key)
+    supabase = get_supabase()
+
+    result = supabase.table("access_requests").select("*").eq("id", request_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Access request not found")
+
+    request_data = result.data[0]
+    if request_data.get("status") != "approved":
+        raise HTTPException(status_code=400, detail="Request is not approved")
+
+    # Get temp password from approved_users table
+    user_result = supabase.table("approved_users").select("temp_password").eq("email", request_data["email"]).execute()
+    temp_password = user_result.data[0].get("temp_password") if user_result.data else "(see admin panel)"
+
+    email_sent = False
+    try:
+        from services.email_service import send_approval_email
+        email_sent = send_approval_email(
+            request_data["email"],
+            request_data["full_name"],
+            temp_password
+        )
+    except Exception as e:
+        print(f"[ACCESS] Email resend error: {e}")
+
+    return {
+        "email_sent": email_sent,
+        "email": request_data["email"],
+        "message": "Email resent" if email_sent else "Email service unavailable"
     }
 
 

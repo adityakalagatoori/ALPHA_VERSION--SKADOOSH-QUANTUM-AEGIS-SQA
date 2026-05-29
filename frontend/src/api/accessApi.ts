@@ -47,3 +47,12 @@ export async function rejectRequest(id: string, adminKey: string) {
   if (!res.ok) throw new Error('Failed to reject')
   return res.json()
 }
+
+export async function resendApprovalEmail(id: string, adminKey: string) {
+  const res = await fetch(`${API_BASE}/access/requests/${id}/resend-email`, {
+    method: 'POST',
+    headers: { 'X-Admin-Key': adminKey },
+  })
+  if (!res.ok) throw new Error('Failed to resend email')
+  return res.json()
+}
