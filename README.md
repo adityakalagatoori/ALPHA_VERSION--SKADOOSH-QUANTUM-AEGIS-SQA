@@ -1,5 +1,6 @@
 # SKADOOSH — Quantum AEGIS SQA
 
+SQA [ DOCS / VIDEO ] -https://drive.google.com/drive/folders/1PU6IWj4PVuP2UY6qX_SZWUM4O_PmBKL4?usp=sharing
 **Secure Quantum Agent (SQA)** is a post-quantum security layer for AI agents. It blocks prompt-injection and behavioral attacks in real time, then writes a tamper-evident, ML-DSA-signed audit trail that compliance teams can hand to a regulator.
 
 Three lines of Python wrap any agent — LangChain, AutoGen, CrewAI, or custom — with a hash-chained, court-admissible record of everything it tried to do.
