@@ -50,17 +50,17 @@ type AttackDef = {
 };
 
 const ATTACKS: AttackDef[] = [
-  { id: 1, name: "Stolen API Key", description: "Auto-blacklist agent → send request from blacklisted agent", endpoint: "stolen-api-key", expected: "❌ BLOCKED — key blacklisted", warrior: "MONKEY (M4)" },
-  { id: 2, name: "Replay Attack", description: "Send signed packet → replay same nonce → blocked", endpoint: "replay", expected: "❌ BLOCKED — nonce used", warrior: "MONKEY (M5)" },
-  { id: 3, name: "Expired Token", description: "Issue expired token → attempt to use it", endpoint: "expired-token", expected: "❌ BLOCKED — token expired", warrior: "CRANE (C6)" },
-  { id: 4, name: "Out-of-Scope Action", description: "Read-only token → attempt delete action", endpoint: "out-of-scope", expected: "❌ BLOCKED — scope violation", warrior: "CRANE (C2)" },
-  { id: 5, name: "Audit Log Tamper", description: "Corrupt audit hash → tamper detection catches it", endpoint: "audit-tamper", expected: "🔴 TAMPER DETECTED", warrior: "SNAKE (S4)" },
-  { id: 6, name: "JSON Injection", description: "Role-override JSON payload via ArmorClaw", endpoint: "json-injection", expected: "❌ BLOCKED by ArmorClaw", warrior: "TIGRESS (T2)" },
-  { id: 7, name: "Base64 Injection", description: "Base64 encoded 'exfiltrate data' command", endpoint: "base64-injection", expected: "❌ BLOCKED — decoded + blocked", warrior: "TIGRESS (T3)" },
-  { id: 8, name: "Multi-Turn Injection", description: "10 messages building to instruction override", endpoint: "multi-turn-injection", expected: "❌ BLOCKED at msg 10", warrior: "TIGRESS (T4/T5)" },
-  { id: 9, name: "Behavioral Anomaly", description: "Flood 100 actions → score spikes → honeypot", endpoint: "behavioral-anomaly", expected: "⚠️ FLAGGED → honeypot", warrior: "MANTIS (A7)" },
-  { id: 10, name: "Cold-Start Poisoning", description: "New agent + attempt fake history injection", endpoint: "cold-start-poisoning", expected: "❌ BLOCKED — peer baseline", warrior: "MANTIS (A2)" },
-  { id: 11, name: "Quantum Key Forgery", description: "Random Dilithium signature → verification fails", endpoint: "quantum-forgery", expected: "❌ BLOCKED — signature invalid", warrior: "MONKEY (M3)" },
+  { id: 1, name: "Stolen API Key", description: "Auto-blacklist agent → send request from blacklisted agent", endpoint: "stolen-api-key", expected: "BLOCKED — key blacklisted", warrior: "MONKEY (M4)" },
+  { id: 2, name: "Replay Attack", description: "Send signed packet → replay same nonce → blocked", endpoint: "replay", expected: "BLOCKED — nonce used", warrior: "MONKEY (M5)" },
+  { id: 3, name: "Expired Token", description: "Issue expired token → attempt to use it", endpoint: "expired-token", expected: "BLOCKED — token expired", warrior: "CRANE (C6)" },
+  { id: 4, name: "Out-of-Scope Action", description: "Read-only token → attempt delete action", endpoint: "out-of-scope", expected: "BLOCKED — scope violation", warrior: "CRANE (C2)" },
+  { id: 5, name: "Audit Log Tamper", description: "Corrupt audit hash → tamper detection catches it", endpoint: "audit-tamper", expected: "TAMPER DETECTED", warrior: "SNAKE (S4)" },
+  { id: 6, name: "JSON Injection", description: "Role-override JSON payload via ArmorClaw", endpoint: "json-injection", expected: "BLOCKED by ArmorClaw", warrior: "TIGRESS (T2)" },
+  { id: 7, name: "Base64 Injection", description: "Base64 encoded 'exfiltrate data' command", endpoint: "base64-injection", expected: "BLOCKED — decoded + blocked", warrior: "TIGRESS (T3)" },
+  { id: 8, name: "Multi-Turn Injection", description: "10 messages building to instruction override", endpoint: "multi-turn-injection", expected: "BLOCKED at msg 10", warrior: "TIGRESS (T4/T5)" },
+  { id: 9, name: "Behavioral Anomaly", description: "Flood 100 actions → score spikes → honeypot", endpoint: "behavioral-anomaly", expected: "FLAGGED → honeypot", warrior: "MANTIS (A7)" },
+  { id: 10, name: "Cold-Start Poisoning", description: "New agent + attempt fake history injection", endpoint: "cold-start-poisoning", expected: "BLOCKED — peer baseline", warrior: "MANTIS (A2)" },
+  { id: 11, name: "Quantum Key Forgery", description: "Random Dilithium signature → verification fails", endpoint: "quantum-forgery", expected: "BLOCKED — signature invalid", warrior: "MONKEY (M3)" },
 ];
 
 const gridVariants = {
@@ -181,7 +181,7 @@ export function MirrorTest() {
                   exit={{ opacity: 0 }}
                   className="text-xs font-mono px-2 py-1 rounded bg-green/10 text-green border border-green/20"
                 >
-                  {passCount}/11 blocked ✅
+                  {passCount}/11 blocked
                 </motion.span>
               )}
             </AnimatePresence>

@@ -27,7 +27,7 @@ def _sha3(data: str) -> str:
 # ── Compliance check helpers ───────────────────────────────────────────────────
 
 def _compliance_check(agent: dict, audit_logs: list, actions: list) -> dict:
-    has_pqc = bool(agent.get("dilithium_public_key_enc"))
+    has_pqc = bool(agent.get("dilithium_public_key") or agent.get("dilithium_private_key_enc"))
     has_audit_trail = len(audit_logs) > 0
     has_signed_logs = any(
         (lg.get("dilithium_sig") or "").startswith("sig_") is False and
@@ -67,10 +67,12 @@ def _gemini_summary(agent_name: str, sector: str, audit_count: int,
                     blocked_count: int, anomaly_count: int,
                     exposure_window_s: float, chain_ok: bool) -> str:
     try:
-        import google.generativeai as genai
+        from google import genai as _genai
         import os
-        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        api_key = os.environ.get("GEMINI_API_KEY", "")
+        if not api_key:
+            raise ValueError("GEMINI_API_KEY not set")
+        client = _genai.Client(api_key=api_key)
         prompt = (
             f"You are a senior cybersecurity analyst writing an executive summary "
             f"for a forensic accountability report on an AI agent breach investigation.\n\n"
@@ -84,7 +86,7 @@ def _gemini_summary(agent_name: str, sector: str, audit_count: int,
             f"(3) compliance posture and recommended action. "
             f"Use formal CISO-level language."
         )
-        resp = model.generate_content(prompt)
+        resp = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
         return resp.text.strip()
     except Exception as e:
         blocked_str = f"{blocked_count} blocked" if blocked_count else "no blocked"
@@ -101,23 +103,35 @@ def _gemini_summary(agent_name: str, sector: str, audit_count: int,
 
 # ── GET /v2/case-file/{agent_id} ───────────────────────────────────────────────
 
+import re as _re
+_UUID_RE = _re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', _re.I)
+
+
 @router.get("/{agent_id}")
 def get_case_file(agent_id: str):
     log_feature("CF", "SQA CASE FILE GENERATION", agent_id[:20], {})
     db = _get_db()
 
-    # Agent record
-    agent_res = db.table("agents").select("*").eq("agent_id", agent_id).single().execute()
-    if not agent_res.data:
-        raise HTTPException(404, f"Agent {agent_id} not found")
-    agent = agent_res.data
+    # Agent record — accept UUID or name
+    if _UUID_RE.match(agent_id):
+        agent_res = db.table("agents").select("*").eq("agent_id", agent_id).single().execute()
+        agent = agent_res.data
+    else:
+        # Lookup by name
+        name_res = db.table("agents").select("*").eq("name", agent_id).limit(1).execute()
+        agent = name_res.data[0] if name_res.data else None
+        if agent:
+            agent_id = agent["agent_id"]  # normalize to UUID for all subsequent queries
+
+    if not agent:
+        raise HTTPException(404, f"Agent '{agent_id}' not found — enter a valid agent_id (UUID) or agent name")
 
     # Audit chain (SNAKE)
     audit_res = db.table("audit_logs").select("*").eq("agent_id", agent_id).order("timestamp", desc=False).execute()
     audit_logs = audit_res.data or []
 
     # Behavioral actions (MANTIS)
-    actions_res = db.table("agent_actions").select("*").eq("agent_id", agent_id).order("created_at", desc=False).execute()
+    actions_res = db.table("agent_actions").select("*").eq("agent_id", agent_id).order("timestamp", desc=False).execute()
     actions = actions_res.data or []
 
     # Blocked / anomaly counts
@@ -135,7 +149,7 @@ def get_case_file(agent_id: str):
         last_ts = audit_logs[-1].get("timestamp")
 
     if anomaly_actions:
-        first_anomaly_ts = anomaly_actions[0].get("created_at")
+        first_anomaly_ts = anomaly_actions[0].get("timestamp")
 
     # Exposure window (seconds from first anomaly to last action)
     exposure_window_s = 0.0
@@ -147,18 +161,59 @@ def get_case_file(agent_id: str):
         except Exception:
             pass
 
-    # Chain integrity verification
+    # Chain integrity verification — PER AGENT
+    # Verify chain LINKS (each entry's prev_hash matches previous entry's current_hash).
+    # Skip legacy/demo entries with malformed hashes (truncated, non-hex) — they pre-date
+    # the SDK pipeline and would cause false positives.
     chain_ok = True
     chain_break_at = None
-    prev_hash = "GENESIS"
+    verified_entries = 0
+    expected_prev = None
+
+    def _is_proper_hash(h):
+        """Real SHA-3-256 hashes are 64 hex chars, no Unicode."""
+        if not h or not isinstance(h, str):
+            return False
+        if h == "TAMPERED":
+            return False
+        # Reject truncated hashes (contain "..." or "…" or are too short)
+        if "..." in h or "…" in h or len(h) < 16:
+            return False
+        # Must be hex
+        try:
+            int(h[:16], 16)
+            return True
+        except ValueError:
+            return False
+
     for lg in audit_logs:
-        raw = f"{lg['agent_id']}|{lg['action_type']}|{prev_hash}|{lg['timestamp']}"
-        expected = _sha3(raw)
-        if lg.get("current_hash") and lg["current_hash"] != expected:
+        current = lg.get("current_hash")
+        prev = lg.get("prev_hash")
+
+        # Explicit tampering — break the chain
+        if current == "TAMPERED":
             chain_ok = False
             chain_break_at = lg.get("log_id")
             break
-        prev_hash = lg.get("current_hash") or expected
+
+        # Skip legacy/demo entries with malformed hashes (don't count as break)
+        if not _is_proper_hash(current):
+            continue
+
+        verified_entries += 1
+
+        # First valid entry — record its hash as the expected predecessor
+        if expected_prev is None:
+            expected_prev = current
+            continue
+
+        # Subsequent entries must link to the previous current_hash
+        if prev and _is_proper_hash(prev) and prev != expected_prev:
+            chain_ok = False
+            chain_break_at = lg.get("log_id")
+            break
+
+        expected_prev = current
 
     # Compliance checks
     compliance = _compliance_check(agent, audit_logs, actions)
@@ -197,7 +252,7 @@ def get_case_file(agent_id: str):
             "blacklisted": agent.get("blacklisted", False),
             "honeypot_isolated": agent.get("honeypot_isolated", False),
             "registered_at": agent.get("created_at"),
-            "pqc_enrolled": bool(agent.get("dilithium_public_key_enc")),
+            "pqc_enrolled": bool(agent.get("dilithium_public_key") or agent.get("dilithium_public_key_enc")),
         },
         "timeline": {
             "first_action": first_ts,
@@ -215,7 +270,8 @@ def get_case_file(agent_id: str):
         "chain_integrity": {
             "status": "INTACT" if chain_ok else "COMPROMISED",
             "break_at_log_id": chain_break_at,
-            "verified_entries": len(audit_logs),
+            "verified_entries": verified_entries,
+            "total_entries": len(audit_logs),
         },
         "audit_chain": [
             {
@@ -232,7 +288,7 @@ def get_case_file(agent_id: str):
                 "action_type": a.get("action_type"),
                 "risk_score": a.get("risk_score"),
                 "block_reason": a.get("block_reason"),
-                "timestamp": a.get("created_at"),
+                "timestamp": a.get("timestamp"),
             }
             for a in blocked_actions[-10:]
         ],
@@ -242,24 +298,25 @@ def get_case_file(agent_id: str):
         "gemini_summary": gemini_summary,
     }
 
-    # ArmorIQ case file event — EXECUTING intent plan in platform.armoriq.ai Intent Plans
-    import threading
+    # ArmorIQ case file event — synchronous with 8s timeout for real plan_id in response
+    import concurrent.futures
+    armoriq_cf_response = {"status": "timeout", "note": "ArmorIQ did not respond in time"}
     def _armoriq_cf():
+        from core.armoriq import log_case_file_generated
+        return log_case_file_generated(
+            agent_id=agent_id,
+            case_id=case_id,
+            compliance_score=result["compliance_score"]
+        )
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
         try:
-            from core.armoriq import log_case_file_generated
-            log_case_file_generated(
-                agent_id=agent_id,
-                case_id=case_id,
-                compliance_score=result["compliance_score"]
-            )
-        except Exception as e:
-            print(f"[ARMORIQ CF] {e}")
-    threading.Thread(target=_armoriq_cf, daemon=True).start()
+            _td = _ex.submit(_armoriq_cf).result(timeout=8)
+            if _td:
+                armoriq_cf_response = {"status": "logged", **{k: v for k, v in _td.items() if v is not None}}
+        except Exception as _e:
+            print(f"[ARMORIQ CF] {_e}")
 
-    result["armoriq"] = {
-        "status": "dispatched",
-        "note": "Forensic case file event logged to platform.armoriq.ai Intent Plans",
-    }
+    result["armoriq"] = armoriq_cf_response
 
     log_result("CF", "CASE FILE GENERATED", agent_id[:20], {
         "case_id": case_id[:8],

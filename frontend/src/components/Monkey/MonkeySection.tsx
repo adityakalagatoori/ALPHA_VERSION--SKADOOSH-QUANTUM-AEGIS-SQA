@@ -42,7 +42,7 @@ export default function MonkeySection() {
 
   const registerAgent = async () => {
     try {
-      addLog("🔄 Registering agent...");
+      addLog("[ ] Registering agent...");
 
       const payload = {
         name: agentName,
@@ -66,7 +66,7 @@ export default function MonkeySection() {
       console.log("Response text:", responseText);
 
       if (!response.ok) {
-        addLog(`❌ Error: ${response.status} ${response.statusText}`);
+        addLog(`[ERR] ${response.status} ${response.statusText}`);
         addLog(`Response: ${responseText}`);
         return;
       }
@@ -77,12 +77,12 @@ export default function MonkeySection() {
       localStorage.setItem("sqa_agent_id", data.agent_id);
       localStorage.setItem("sqa_agent_token", data.token);
 
-      addLog(`✅ Agent ID: ${data.agent_id}`);
-      addLog(`✅ Kyber Algorithm: ${data.kyber_algorithm}`);
-      addLog(`✅ Dilithium Algorithm: ${data.dilithium_algorithm}`);
-      addLog(`✅ Token: ${data.token.substring(0, 50)}...`);
+      addLog(`[OK] Agent ID: ${data.agent_id}`);
+      addLog(`[OK] Kyber Algorithm: ${data.kyber_algorithm}`);
+      addLog(`[OK] Dilithium Algorithm: ${data.dilithium_algorithm}`);
+      addLog(`[OK] Token: ${data.token.substring(0, 50)}...`);
     } catch (error: any) {
-      addLog(`❌ Error: ${error.message}`);
+      addLog(`[ERR] ${error.message}`);
       console.error("Full error:", error);
     }
   };

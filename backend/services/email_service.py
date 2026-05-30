@@ -72,16 +72,16 @@ def send_approval_email(to_email: str, full_name: str, temp_password: str) -> bo
 
     try:
         import resend
-        resend.Emails.send({
+        result = resend.Emails.send({
             "from": RESEND_FROM_EMAIL,
-            "to": to_email,
-            "subject": "SQA Platform — Access Approved ✅",
+            "to": [to_email],
+            "subject": "SQA Platform — Access Approved",
             "html": html
         })
-        print(f"[EMAIL] Approval sent to {to_email}")
+        print(f"[EMAIL] Approval sent to {to_email} — id: {getattr(result, 'id', result)}")
         return True
     except Exception as e:
-        print(f"[EMAIL ERROR] {e}")
+        print(f"[EMAIL ERROR] {type(e).__name__}: {e}")
         return False
 
 
@@ -105,11 +105,11 @@ def send_rejection_email(to_email: str, full_name: str) -> bool:
         import resend
         resend.Emails.send({
             "from": RESEND_FROM_EMAIL,
-            "to": to_email,
+            "to": [to_email],
             "subject": "SQA Platform — Access Request Update",
             "html": html
         })
         return True
     except Exception as e:
-        print(f"[EMAIL ERROR] {e}")
+        print(f"[EMAIL ERROR] {type(e).__name__}: {e}")
         return False

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ScrollText as ScrollIcon } from "lucide-react";
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { usePolling } from "../hooks/usePolling";
 import { V2 } from "../api/client";
@@ -127,7 +128,7 @@ export function Overview() {
             className="text-xs font-mono px-4 py-2 rounded-lg border transition-all disabled:opacity-50"
             style={{ borderColor: "rgba(167,139,250,0.3)", color: "#a78bfa", background: "rgba(167,139,250,0.06)" }}
           >
-            {complianceLoading ? "Generating…" : "📜 Compliance Report"}
+            {complianceLoading ? "Generating…" : <span className="flex items-center gap-1.5"><ScrollIcon size={12} strokeWidth={1.5} /> Compliance Report</span>}
           </button>
         </div>
 

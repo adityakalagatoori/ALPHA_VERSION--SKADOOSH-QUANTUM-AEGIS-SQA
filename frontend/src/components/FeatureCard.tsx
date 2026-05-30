@@ -252,11 +252,18 @@ export function useFeature() {
           response: d.armoriq || d.armoriq_response,
         });
       }
-      if (d.armorclaw_response) {
+      if (d.armoriq_policy) {
+        chips.push({
+          type: "armoriq",
+          label: `POLICY: ${(d.armoriq_policy as { policy_name?: string }).policy_name || "ArmorIQ"}`,
+          response: d.armoriq_policy,
+        });
+      }
+      if (d.armorclaw_response || d.armorclaw) {
         chips.push({
           type: "armorclaw",
           label: "ARMORCLAW",
-          response: d.armorclaw_response,
+          response: d.armorclaw_response || d.armorclaw,
         });
       }
       setProofs(chips);

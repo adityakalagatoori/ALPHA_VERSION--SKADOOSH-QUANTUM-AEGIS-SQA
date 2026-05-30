@@ -56,3 +56,29 @@ export async function resendApprovalEmail(id: string, adminKey: string) {
   if (!res.ok) throw new Error('Failed to resend email')
   return res.json()
 }
+
+export async function deleteAccessRequest(id: string, adminKey: string) {
+  const res = await fetch(`${API_BASE}/access/requests/${id}`, {
+    method: 'DELETE',
+    headers: { 'X-Admin-Key': adminKey },
+  })
+  if (!res.ok) throw new Error('Failed to delete request')
+  return res.json()
+}
+
+export async function getApprovedUsers(adminKey: string) {
+  const res = await fetch(`${API_BASE}/access/users`, {
+    headers: { 'X-Admin-Key': adminKey },
+  })
+  if (!res.ok) throw new Error('Unauthorized')
+  return res.json()
+}
+
+export async function deleteApprovedUser(email: string, adminKey: string) {
+  const res = await fetch(`${API_BASE}/access/users/by-email/${encodeURIComponent(email)}`, {
+    method: 'DELETE',
+    headers: { 'X-Admin-Key': adminKey },
+  })
+  if (!res.ok) throw new Error('Failed to delete user')
+  return res.json()
+}

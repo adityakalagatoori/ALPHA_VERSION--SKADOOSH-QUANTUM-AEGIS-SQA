@@ -28,20 +28,27 @@ def compliance_report():
     now = datetime.now(timezone.utc).isoformat()
 
     # ── Gather evidence ───────────────────────────────────────────────────────
-    agents_res = db.table("agents").select("agent_id,name,sector,trust_score,blacklisted,honeypot_isolated,dilithium_public_key_enc,created_at").execute()
+    agents_res = db.table("agents").select("agent_id,name,sector,trust_score,blacklisted,dilithium_public_key,created_at").execute()
     agents = agents_res.data or []
 
     audit_res = db.table("audit_logs").select("log_id,agent_id,action_type,timestamp,dilithium_sig,current_hash").order("timestamp", desc=True).limit(500).execute()
     audit_logs = audit_res.data or []
 
-    actions_res = db.table("agent_actions").select("agent_id,action_type,risk_score,blocked,block_reason,honeypot_routed,created_at").order("created_at", desc=True).limit(500).execute()
+    actions_res = db.table("agent_actions").select("agent_id,action_type,risk_score,blocked,block_reason,honeypot_routed,timestamp").order("timestamp", desc=True).limit(500).execute()
     actions = actions_res.data or []
+
+    # honeypot count from honeypot_logs table
+    try:
+        hp_res = db.table("honeypot_logs").select("agent_id").execute()
+        honeypot_agent_ids = {r["agent_id"] for r in (hp_res.data or [])}
+        honeypot_isolated = len(honeypot_agent_ids)
+    except Exception:
+        honeypot_isolated = sum(1 for a in actions if a.get("honeypot_routed"))
 
     # ── Derived metrics ───────────────────────────────────────────────────────
     total_agents = len(agents)
-    pqc_agents = sum(1 for a in agents if a.get("dilithium_public_key_enc"))
+    pqc_agents = sum(1 for a in agents if a.get("dilithium_public_key"))
     blacklisted = sum(1 for a in agents if a.get("blacklisted"))
-    honeypot_isolated = sum(1 for a in agents if a.get("honeypot_isolated"))
     total_audit = len(audit_logs)
     signed_audit = sum(1 for lg in audit_logs if lg.get("dilithium_sig") and len(lg.get("dilithium_sig", "")) > 20)
     total_actions = len(actions)
@@ -233,7 +240,7 @@ def compliance_report():
         },
     }
 
-    log_result("CP", "COMPLIANCE REPORT GENERATED", "SYSTEM", {
+    log_result("CP", "COMPLIANCE REPORT GENERATED", {
         "passed": passed,
         "total": total_controls,
         "grade": result["score"]["grade"],

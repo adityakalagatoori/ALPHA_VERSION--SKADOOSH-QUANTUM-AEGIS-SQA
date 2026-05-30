@@ -226,6 +226,89 @@ async def resend_approval_email(request_id: str, x_admin_key: Optional[str] = He
 
 
 # =========================================================
+# DELETE REQUEST (admin only)
+# =========================================================
+
+@router.delete("/requests/{request_id}")
+async def delete_access_request(request_id: str, x_admin_key: Optional[str] = Header(None)):
+    require_admin(x_admin_key)
+    supabase = get_supabase()
+
+    result = supabase.table("access_requests").select("*").eq("id", request_id).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Access request not found")
+
+    request_data = result.data[0]
+    email = request_data.get("email", "")
+
+    # Remove from approved_users if present
+    if email:
+        supabase.table("approved_users").delete().eq("email", email).execute()
+
+    # Try to delete Supabase Auth user
+    if email:
+        try:
+            from services.db import get_admin_db
+            admin_supabase = get_admin_db()
+            users = admin_supabase.auth.admin.list_users()
+            for u in users:
+                if u.email == email:
+                    admin_supabase.auth.admin.delete_user(u.id)
+                    print(f"[ACCESS] Auth user deleted for {email}")
+                    break
+        except Exception as e:
+            print(f"[ACCESS] Auth delete error (non-fatal): {e}")
+
+    # Delete the access request itself
+    supabase.table("access_requests").delete().eq("id", request_id).execute()
+
+    return {"status": "deleted", "id": request_id, "email": email}
+
+
+# =========================================================
+# LIST APPROVED USERS (admin only)
+# =========================================================
+
+@router.get("/users")
+async def list_approved_users(x_admin_key: Optional[str] = Header(None)):
+    require_admin(x_admin_key)
+    supabase = get_supabase()
+    result = supabase.table("approved_users").select("*").order("created_at", desc=True).execute()
+    return {"users": result.data or [], "count": len(result.data or [])}
+
+
+# =========================================================
+# DELETE APPROVED USER by email (admin only)
+# =========================================================
+
+@router.delete("/users/by-email/{email:path}")
+async def delete_approved_user(email: str, x_admin_key: Optional[str] = Header(None)):
+    """Delete a user from approved_users table + Supabase Auth."""
+    require_admin(x_admin_key)
+    supabase = get_supabase()
+
+    # Delete from approved_users
+    supabase.table("approved_users").delete().eq("email", email).execute()
+
+    # Delete from Supabase Auth
+    deleted_from_auth = False
+    try:
+        from services.db import get_admin_db
+        admin_supabase = get_admin_db()
+        users = admin_supabase.auth.admin.list_users()
+        for u in users:
+            if u.email == email:
+                admin_supabase.auth.admin.delete_user(u.id)
+                deleted_from_auth = True
+                print(f"[ACCESS] Auth user deleted for {email}")
+                break
+    except Exception as e:
+        print(f"[ACCESS] Auth delete error (non-fatal): {e}")
+
+    return {"status": "deleted", "email": email, "auth_deleted": deleted_from_auth}
+
+
+# =========================================================
 # REJECT REQUEST (admin only)
 # =========================================================
 

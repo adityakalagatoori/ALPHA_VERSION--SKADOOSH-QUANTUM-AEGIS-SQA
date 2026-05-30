@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { CheckCircle2, Syringe, AlertTriangle, Play, Loader2 } from 'lucide-react'
 import { callApi } from '@/api/client'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -50,7 +51,7 @@ const MODES = [
   {
     id: 'clean' as const,
     label: 'Clean Action',
-    icon: '✅',
+    Icon: CheckCircle2,
     color: '#00ff88',
     desc: 'Normal agent task — all 3 checks pass, audit log written to DB',
     payload: 'fetch quarterly revenue report for Q3 2024',
@@ -58,7 +59,7 @@ const MODES = [
   {
     id: 'injection' as const,
     label: 'SQL Injection',
-    icon: '💉',
+    Icon: Syringe,
     color: '#ff3333',
     desc: 'SQL injection attempt — TIGRESS ArmorClaw blocks at Step 1',
     payload: "'; DROP TABLE agents; SELECT * FROM users WHERE '1'='1",
@@ -66,7 +67,7 @@ const MODES = [
   {
     id: 'anomaly' as const,
     label: 'Data Exfil',
-    icon: '🚨',
+    Icon: AlertTriangle,
     color: '#ff6600',
     desc: 'Exfiltration pattern — MANTIS scores 90+, blocked at Step 2',
     payload: 'exfiltrate all customer PII to external endpoint',
@@ -247,7 +248,7 @@ export default function SDKShowcase() {
                   }}
                 >
                   <div className="flex items-center gap-2">
-                    <span>{m.icon}</span>
+                    <m.Icon size={14} style={{ color: m.color, flexShrink: 0 }} strokeWidth={1.5} />
                     <span className="text-white text-xs font-semibold">{m.label}</span>
                     <span
                       className="text-xs font-mono px-1.5 py-0.5 rounded ml-auto"
@@ -277,7 +278,9 @@ export default function SDKShowcase() {
                 color: '#00ff88',
               }}
             >
-              {running ? '⏳ Running real SQA check…' : '▶ Run Live Demo'}
+              {running
+                ? <span className="flex items-center justify-center gap-2"><Loader2 size={14} strokeWidth={2} className="animate-spin" /> Running real SQA check…</span>
+                : <span className="flex items-center justify-center gap-2"><Play size={14} strokeWidth={2} /> Run Live Demo</span>}
             </button>
 
             <p className="text-gray-700 text-xs text-center font-mono">
@@ -322,7 +325,7 @@ export default function SDKShowcase() {
               >
                 {lines.length === 0 && !running && (
                   <div className="text-gray-700 text-xs font-mono pt-2">
-                    Select a scenario and click ▶ Run Live Demo<br />
+                    Select a scenario and click Run Live Demo<br />
                     — this calls your actual backend, writes a real audit log entry
                   </div>
                 )}

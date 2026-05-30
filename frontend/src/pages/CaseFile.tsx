@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { FileText, BarChart3, Bot, Timer, Link2, ScrollText, Ban, Scale, CheckCircle2, XCircle } from "lucide-react";
 import { V2 } from "../api/client";
 
 type CaseFileData = {
@@ -55,7 +56,7 @@ function Badge({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
-function Section({ title, accent = "#c9a227", children }: { title: string; accent?: string; children: React.ReactNode }) {
+function Section({ title, accent = "#c9a227", children }: { title: React.ReactNode; accent?: string; children: React.ReactNode }) {
   return (
     <div
       className="rounded-xl border border-white/10 bg-[#161616]/80 p-4 space-y-3"
@@ -94,7 +95,8 @@ export function CaseFile() {
       {/* Header */}
       <div>
         <h1 className="text-white text-xl font-bold font-mono flex items-center gap-2">
-          📋 <span>SQA Case File</span>
+          <FileText size={20} className="text-amber-400 flex-shrink-0" strokeWidth={1.5} />
+          <span>SQA Case File</span>
           <span className="text-xs text-gray-600 font-normal ml-2">Forensic Accountability Report</span>
         </h1>
         <p className="text-gray-500 text-xs mt-1">
@@ -121,7 +123,7 @@ export function CaseFile() {
             color: "#000",
           }}
         >
-          {loading ? "Generating…" : "⚖️ Generate Case File"}
+          {loading ? "Generating…" : <span className="flex items-center gap-1.5"><Scale size={14} strokeWidth={2} /> Generate Case File</span>}
         </button>
       </div>
 
@@ -171,12 +173,12 @@ export function CaseFile() {
             </div>
 
             {/* Gemini Executive Summary */}
-            <Section title="🤖 Gemini Executive Summary" accent="#4488ff">
+            <Section title={<span className="flex items-center gap-1.5"><Bot size={14} strokeWidth={1.5} /> Gemini Executive Summary</span>} accent="#4488ff">
               <p className="text-gray-300 text-sm leading-relaxed">{data.gemini_summary}</p>
             </Section>
 
             {/* Evidence stats */}
-            <Section title="📊 Evidence Summary" accent="#00ff88">
+            <Section title={<span className="flex items-center gap-1.5"><BarChart3 size={14} strokeWidth={1.5} /> Evidence Summary</span>} accent="#00ff88">
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {[
                   { label: "Audit Entries", value: data.evidence.audit_entries, color: "#00ff88" },
@@ -194,7 +196,7 @@ export function CaseFile() {
             </Section>
 
             {/* Timeline */}
-            <Section title="⏱ Breach Timeline" accent="#c9a227">
+            <Section title={<span className="flex items-center gap-1.5"><Timer size={14} strokeWidth={1.5} /> Breach Timeline</span>} accent="#c9a227">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
                 {[
                   { label: "First Action", val: data.timeline.first_action },
@@ -213,9 +215,12 @@ export function CaseFile() {
             </Section>
 
             {/* Chain Integrity */}
-            <Section title="🔗 Audit Chain Integrity" accent={chainOk ? "#00ff88" : "#ff3333"}>
+            <Section title={<span className="flex items-center gap-1.5"><Link2 size={14} strokeWidth={1.5} /> Audit Chain Integrity</span>} accent={chainOk ? "#00ff88" : "#ff3333"}>
               <div className="flex items-center gap-3 text-sm">
-                <span className="text-2xl">{chainOk ? "✅" : "❌"}</span>
+                {chainOk
+                  ? <CheckCircle2 size={24} style={{ color: "#00ff88", flexShrink: 0 }} strokeWidth={1.5} />
+                  : <XCircle size={24} style={{ color: "#ff3333", flexShrink: 0 }} strokeWidth={1.5} />
+                }
                 <div>
                   <div className="font-mono font-bold" style={{ color: chainOk ? "#00ff88" : "#ff3333" }}>
                     {data.chain_integrity.status}
@@ -241,7 +246,7 @@ export function CaseFile() {
             </Section>
 
             {/* Compliance */}
-            <Section title="📜 Compliance Status" accent="#a78bfa">
+            <Section title={<span className="flex items-center gap-1.5"><ScrollText size={14} strokeWidth={1.5} /> Compliance Status</span>} accent="#a78bfa">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {Object.entries(data.compliance).map(([framework, detail]) => (
                   <div
@@ -265,7 +270,7 @@ export function CaseFile() {
 
             {/* Blocked actions */}
             {data.blocked_actions_log.length > 0 && (
-              <Section title="🚫 Blocked Actions Log" accent="#ff3333">
+              <Section title={<span className="flex items-center gap-1.5"><Ban size={14} strokeWidth={1.5} /> Blocked Actions Log</span>} accent="#ff3333">
                 <div className="space-y-1">
                   {data.blocked_actions_log.map((a, i) => (
                     <div key={i} className="flex items-center gap-3 text-xs font-mono py-1 px-2 rounded bg-black/20">

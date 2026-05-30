@@ -22,9 +22,31 @@ def _get_db():
     return get_admin_db()
 
 
+def _db_exec(query_builder):
+    """Execute a Supabase query, auto-reconnecting once on stale HTTP/2 errors."""
+    try:
+        return query_builder.execute()
+    except Exception as e:
+        if "RemoteProtocolError" in type(e).__name__ or "RemoteProtocol" in str(e) or "Server disconnected" in str(e):
+            from services.db import reset_admin_db, get_admin_db
+            reset_admin_db()
+            # Cannot retry the same builder — caller must retry with fresh db
+            raise
+        raise
+
+
 def _get_agent(agent_id: str):
-    db = _get_db()
-    res = db.table("agents").select("*").eq("agent_id", agent_id).single().execute()
+    try:
+        db = _get_db()
+        res = db.table("agents").select("*").eq("agent_id", agent_id).single().execute()
+    except Exception as e:
+        if "Server disconnected" in str(e) or "RemoteProtocol" in str(e):
+            from services.db import reset_admin_db, get_admin_db
+            reset_admin_db()
+            db = get_admin_db()
+            res = db.table("agents").select("*").eq("agent_id", agent_id).single().execute()
+        else:
+            raise
     if not res.data:
         raise HTTPException(404, "Agent not found")
     return res.data
@@ -74,6 +96,7 @@ class RegisterRequest(BaseModel):
     name: str
     sector: str
     allowed_actions: list[str] = ["read", "write"]
+    owner_email: str = ""
 
 
 @router.post("/register")
@@ -115,28 +138,41 @@ def register_agent(payload: RegisterRequest):
         "trust_score": 100,
         "blacklisted": False,
     }
-    res = db.table("agents").insert(row).execute()
+    if payload.owner_email:
+        row["owner_email"] = payload.owner_email
+    try:
+        res = db.table("agents").insert(row).execute()
+    except Exception as e:
+        if "owner_email" in str(e):
+            # Column doesn't exist yet — insert without it
+            row.pop("owner_email", None)
+            res = db.table("agents").insert(row).execute()
+        else:
+            raise
     agent = res.data[0]
     agent_id = agent["agent_id"]
 
     elapsed = round((time.time() - start) * 1000)
 
-    # ArmorIQ registration via SDK — registers in ArmorIQ dashboard
-    armoriq_response = {"status": "logged", "note": "ArmorIQ SDK call dispatched"}
-    import threading
+    # ArmorIQ registration via SDK — synchronous with 8s timeout for real plan_id in response
+    import concurrent.futures
+    armoriq_response = {"status": "timeout", "note": "ArmorIQ did not respond in time"}
     def _armoriq_register():
+        from core.armoriq import log_agent_registration
+        return log_agent_registration(
+            agent_id=agent_id,
+            agent_name=payload.name,
+            sector=payload.sector,
+            kyber_algorithm="Kyber1024",
+            dilithium_algorithm="Dilithium3",
+        )
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
         try:
-            from core.armoriq import log_agent_registration
-            log_agent_registration(
-                agent_id=agent_id,
-                agent_name=payload.name,
-                sector=payload.sector,
-                kyber_algorithm="Kyber1024",
-                dilithium_algorithm="Dilithium3",
-            )
-        except Exception as e:
-            print(f"[ARMORIQ M1] {e}")
-    threading.Thread(target=_armoriq_register, daemon=True).start()
+            _td = _ex.submit(_armoriq_register).result(timeout=8)
+            if _td:
+                armoriq_response = {"status": "logged", **{k: v for k, v in _td.items() if v is not None}}
+        except Exception as _e:
+            print(f"[ARMORIQ M1] {_e}")
 
     _emit("AGENT_REGISTERED", "LOW", "M1 — Agent Registered", agent_id,
           f"Agent '{payload.name}' registered with Kyber-1024 + Dilithium-3 (source: {source})")
@@ -199,15 +235,19 @@ def generate_keypair():
     pool_count_res = db.table("keypair_pool").select("id", count="exact").eq("used", False).execute()
     pool_count = pool_count_res.count or 0
 
-    # ArmorIQ entropy event via SDK — registers in ArmorIQ dashboard
-    import threading
+    # ArmorIQ entropy event via SDK — synchronous with 8s timeout for real plan_id in response
+    import concurrent.futures
+    armoriq_response_m2 = {"status": "timeout", "note": "ArmorIQ did not respond in time"}
     def _armoriq_entropy():
+        from core.armoriq import log_entropy_event
+        return log_entropy_event(agent_id=pool_row["id"], entropy_bits=7168)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
         try:
-            from core.armoriq import log_entropy_event
-            log_entropy_event(agent_id=pool_row["id"], entropy_bits=7168)
-        except Exception as e:
-            print(f"[ARMORIQ M2] {e}")
-    threading.Thread(target=_armoriq_entropy, daemon=True).start()
+            _td = _ex.submit(_armoriq_entropy).result(timeout=8)
+            if _td:
+                armoriq_response_m2 = {"status": "logged", **{k: v for k, v in _td.items() if v is not None}}
+        except Exception as _e:
+            print(f"[ARMORIQ M2] {_e}")
 
     return {
         "feature": "M2",
@@ -216,6 +256,7 @@ def generate_keypair():
         "entropy_source": "liboqs-python CRYSTALS-Kyber1024 + Dilithium3 (hardware RNG)",
         "elapsed_ms": elapsed,
         "pool_count_after": pool_count,
+        "armoriq": armoriq_response_m2,
         "supabase_table": "keypair_pool",
         "supabase_row": {
             "id": pool_row["id"],
@@ -271,19 +312,23 @@ def verify_signature(payload: VerifySignatureRequest):
                     risk_score=80 if blocked else 0, blocked=blocked,
                     block_reason="INVALID_SIGNATURE" if blocked else None)
 
-        # ArmorIQ signature event via SDK
-        import threading
+        # ArmorIQ signature event via SDK — synchronous with 8s timeout
+        import concurrent.futures
+        armoriq_response_m3 = {"status": "timeout", "note": "ArmorIQ did not respond in time"}
         def _armoriq_sig():
+            if valid:
+                from core.armoriq import log_signature_success
+                return log_signature_success(agent_id=payload.agent_id)
+            else:
+                from core.armoriq import log_signature_failure
+                return log_signature_failure(agent_id=payload.agent_id)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
             try:
-                if valid:
-                    from core.armoriq import log_signature_success
-                    log_signature_success(agent_id=payload.agent_id)
-                else:
-                    from core.armoriq import log_signature_failure
-                    log_signature_failure(agent_id=payload.agent_id)
-            except Exception as e:
-                print(f"[ARMORIQ M3] {e}")
-        threading.Thread(target=_armoriq_sig, daemon=True).start()
+                _td = _ex.submit(_armoriq_sig).result(timeout=8)
+                if _td:
+                    armoriq_response_m3 = {"status": "logged", **{k: v for k, v in _td.items() if v is not None}}
+            except Exception as _e:
+                print(f"[ARMORIQ M3] {_e}")
 
         return {
             "feature": "M3",
@@ -294,6 +339,7 @@ def verify_signature(payload: VerifySignatureRequest):
             "signature_preview": base64.b64encode(signature[:16]).decode() + "...",
             "tampered_input": payload.tamper,
             "algorithm": "Dilithium3",
+            "armoriq": armoriq_response_m3,
             "supabase_table": "agent_actions",
             "blocked_logged": blocked,
         }
@@ -324,16 +370,19 @@ def blacklist_agent(agent_id: str, payload: BlacklistRequest):
                 {"reason": payload.reason}, risk_score=100,
                 blocked=True, block_reason="MANUAL_BLACKLIST")
 
-    # ArmorIQ blacklist via SDK — registers CRITICAL alert in ArmorIQ dashboard
-    armoriq_response = {"status": "logged", "note": "ArmorIQ SDK blacklist alert dispatched"}
-    import threading
+    # ArmorIQ blacklist via SDK — synchronous with 8s timeout for real plan_id in response
+    import concurrent.futures
+    armoriq_response = {"status": "timeout", "note": "ArmorIQ did not respond in time"}
     def _armoriq_blacklist():
+        from core.armoriq import log_blacklist_event
+        return log_blacklist_event(agent_id=agent_id)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
         try:
-            from core.armoriq import log_blacklist_event
-            log_blacklist_event(agent_id=agent_id)
-        except Exception as e:
-            print(f"[ARMORIQ M4] {e}")
-    threading.Thread(target=_armoriq_blacklist, daemon=True).start()
+            _td = _ex.submit(_armoriq_blacklist).result(timeout=8)
+            if _td:
+                armoriq_response = {"status": "logged", **{k: v for k, v in _td.items() if v is not None}}
+        except Exception as _e:
+            print(f"[ARMORIQ M4] {_e}")
 
     _emit("AGENT_BLACKLISTED", "HIGH", "M4 — Agent Blacklisted", agent_id,
           f"Agent '{agent['name']}' blacklisted: {payload.reason}")
@@ -446,27 +495,55 @@ def enclave_check(agent_id: str):
 
 # ─── M7 — Oogway's Signal (identity alerts) ──────────────────────────────────
 
+def _identity_alerts_fetch():
+    db = _get_db()
+    blocked = db.table("agent_actions").select("*, agents(name, sector)").eq("blocked", True).order("timestamp", desc=True).limit(20).execute()
+    blist = db.table("agents").select("agent_id, name, sector, blacklist_reason, created_at").eq("blacklisted", True).order("created_at", desc=True).limit(10).execute()
+    return blocked, blist
+
+
+@router.delete("/{agent_id}")
+def delete_agent(agent_id: str):
+    """Delete an agent and all its related data (actions, audit logs, etc)."""
+    db = _get_db()
+
+    # Verify the agent exists
+    existing = db.table("agents").select("agent_id, name").eq("agent_id", agent_id).execute()
+    if not existing.data:
+        raise HTTPException(404, "Agent not found")
+
+    agent_name = existing.data[0].get("name", agent_id)
+
+    # Cascade delete related data (ignore errors if tables don't exist)
+    for table in ["agent_actions", "audit_logs", "behavior_baselines", "honeypot_logs"]:
+        try:
+            db.table(table).delete().eq("agent_id", agent_id).execute()
+        except Exception:
+            pass
+
+    # Delete the agent itself
+    db.table("agents").delete().eq("agent_id", agent_id).execute()
+
+    return {
+        "status": "deleted",
+        "agent_id": agent_id,
+        "name": agent_name,
+        "message": f"Agent {agent_name} and all related data permanently removed",
+    }
+
+
 @router.get("/alerts/identity")
 def identity_alerts():
     """M7 — Real-time identity threat alert feed"""
-    db = _get_db()
-
-    blocked_actions = (
-        db.table("agent_actions")
-        .select("*, agents(name, sector)")
-        .eq("blocked", True)
-        .order("timestamp", desc=True)
-        .limit(20)
-        .execute()
-    )
-    blacklisted_agents = (
-        db.table("agents")
-        .select("agent_id, name, sector, blacklist_reason, created_at")
-        .eq("blacklisted", True)
-        .order("created_at", desc=True)
-        .limit(10)
-        .execute()
-    )
+    try:
+        blocked_actions, blacklisted_agents = _identity_alerts_fetch()
+    except Exception as e:
+        if "Server disconnected" in str(e) or "RemoteProtocol" in str(e):
+            from services.db import reset_admin_db
+            reset_admin_db()
+            blocked_actions, blacklisted_agents = _identity_alerts_fetch()
+        else:
+            raise
 
     alerts = []
     for a in blocked_actions.data or []:

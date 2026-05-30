@@ -245,12 +245,15 @@ def log_agent_registration(
 
         # THIS call hits ArmorIQ server and registers in dashboard
         intent_token = client.get_intent_token(plan_capture, validity_seconds=3600)
+        token_data = {
+            "plan_id": getattr(intent_token, "plan_id", None),
+            "plan_hash": getattr(intent_token, "plan_hash", None),
+            "token_id": getattr(intent_token, "token_id", None),
+            "merkle_root": getattr(intent_token, "merkle_root", None),
+            "intent_reference": getattr(intent_token, "intent_reference", None),
+        }
+        print(f"[ARMORIQ] Agent registration logged — plan_id: {token_data['plan_id']}")
 
-        print(f"[ARMORIQ] Agent registration logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
-
-        # =====================================================
-        # S5: WRITE TO SNAKE AUDIT CHAIN
-        # =====================================================
         if SNAKE_AVAILABLE:
             try:
                 create_audit_log(
@@ -268,10 +271,12 @@ def log_agent_registration(
                 print(f"[S5] SNAKE write error: {snake_error}")
 
         print("==============================\n")
+        return token_data
 
     except Exception as e:
         print(f"[ARMORIQ WARNING] {e}")
         print("==============================\n")
+        return None
 
 # =========================================================
 # ENTROPY EVENT (REAL SDK CALL)
@@ -309,12 +314,15 @@ def log_entropy_event(
         )
 
         intent_token = client.get_intent_token(plan_capture, validity_seconds=3600)
+        token_data = {
+            "plan_id": getattr(intent_token, "plan_id", None),
+            "plan_hash": getattr(intent_token, "plan_hash", None),
+            "token_id": getattr(intent_token, "token_id", None),
+            "merkle_root": getattr(intent_token, "merkle_root", None),
+            "intent_reference": getattr(intent_token, "intent_reference", None),
+        }
+        print(f"[ARMORIQ] Entropy event logged — plan_id: {token_data['plan_id']}")
 
-        print(f"[ARMORIQ] Entropy event logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
-
-        # =====================================================
-        # S5: WRITE TO SNAKE AUDIT CHAIN
-        # =====================================================
         if SNAKE_AVAILABLE:
             try:
                 create_audit_log(
@@ -327,16 +335,18 @@ def log_entropy_event(
                 print(f"[S5] SNAKE write error: {snake_error}")
 
         print("==============================\n")
+        return token_data
 
     except Exception as e:
         print(f"[ARMORIQ WARNING] {e}")
         print("==============================\n")
+        return None
 
 # =========================================================
 # SIGNATURE SUCCESS EVENT
 # =========================================================
 
-def log_signature_success(agent_id: str):
+def log_signature_success(agent_id: str, action_type: str = "SIGNATURE_VERIFIED"):
     """
     Log successful signature verification to ArmorIQ.
     S5: Also write to SNAKE audit chain.
@@ -364,12 +374,15 @@ def log_signature_success(agent_id: str):
         )
 
         intent_token = client.get_intent_token(plan_capture, validity_seconds=3600)
+        token_data = {
+            "plan_id": getattr(intent_token, "plan_id", None),
+            "plan_hash": getattr(intent_token, "plan_hash", None),
+            "token_id": getattr(intent_token, "token_id", None),
+            "merkle_root": getattr(intent_token, "merkle_root", None),
+            "intent_reference": getattr(intent_token, "intent_reference", None),
+        }
+        print(f"[ARMORIQ] Signature verified logged — plan_id: {token_data['plan_id']}")
 
-        print(f"[ARMORIQ] Signature verified logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
-
-        # =====================================================
-        # S5: WRITE TO SNAKE AUDIT CHAIN
-        # =====================================================
         if SNAKE_AVAILABLE:
             try:
                 create_audit_log(
@@ -382,16 +395,18 @@ def log_signature_success(agent_id: str):
                 print(f"[S5] SNAKE write error: {snake_error}")
 
         print("==============================\n")
+        return token_data
 
     except Exception as e:
         print(f"[ARMORIQ WARNING] {e}")
         print("==============================\n")
+        return None
 
 # =========================================================
 # SIGNATURE FAILURE EVENT
 # =========================================================
 
-def log_signature_failure(agent_id: str):
+def log_signature_failure(agent_id: str, reason: str = "SIGNATURE_FAILED"):
     """
     Log signature verification failure to ArmorIQ — SECURITY ALERT.
     S5: Also write to SNAKE audit chain.
@@ -421,12 +436,15 @@ def log_signature_failure(agent_id: str):
         )
 
         intent_token = client.get_intent_token(plan_capture, validity_seconds=3600)
+        token_data = {
+            "plan_id": getattr(intent_token, "plan_id", None),
+            "plan_hash": getattr(intent_token, "plan_hash", None),
+            "token_id": getattr(intent_token, "token_id", None),
+            "merkle_root": getattr(intent_token, "merkle_root", None),
+            "intent_reference": getattr(intent_token, "intent_reference", None),
+        }
+        print(f"[ARMORIQ] Signature failure alert logged — plan_id: {token_data['plan_id']}")
 
-        print(f"[ARMORIQ] Signature failure alert logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
-
-        # =====================================================
-        # S5: WRITE TO SNAKE AUDIT CHAIN
-        # =====================================================
         if SNAKE_AVAILABLE:
             try:
                 create_audit_log(
@@ -439,81 +457,109 @@ def log_signature_failure(agent_id: str):
                 print(f"[S5] SNAKE write error: {snake_error}")
 
         print("==============================\n")
+        return token_data
 
     except Exception as e:
         print(f"[ARMORIQ WARNING] {e}")
         print("==============================\n")
+        return None
 
 # =========================================================
 # BLACKLIST EVENT
 # =========================================================
 
-def log_audit_entry(agent_id: str, action: str, hash_val: str, timestamp: str):
+def log_audit_entry(agent_id: str, action: str = "", hash_val: str = "", timestamp: str = "",
+                    action_type: str = "", current_hash: str = ""):
     """
     Log an audit chain entry to ArmorIQ — shows in dashboard as an audit event.
     S1: Called when a SHA-3-256 entry is written to the SNAKE chain.
+    Accepts both old (action, hash_val, timestamp) and new (action_type, current_hash) conventions.
     """
+    # Normalize parameter names
+    effective_action = action_type or action
+    effective_hash = current_hash or hash_val
     print("\n==============================")
     print(" ARMORIQ AUDIT ENTRY ")
     print("==============================")
     print(f"agent_id: {agent_id}")
-    print(f"action: {action}")
-    print(f"hash: {hash_val[:16]}...")
+    print(f"action: {effective_action}")
+    print(f"hash: {effective_hash[:16] if effective_hash else 'N/A'}...")
     try:
         plan_capture = client.capture_plan(
             llm="sqa-snake-agent",
-            prompt=f"SQA SNAKE: Immutable audit log entry — action={action} agent={agent_id} hash={hash_val[:16]}",
+            prompt=f"SQA SNAKE: Immutable audit log entry — action={effective_action} agent={agent_id} hash={effective_hash[:16] if effective_hash else 'N/A'}",
             plan={
                 "goal": "Write SHA-3-256 immutable audit log entry to chain",
                 "steps": [
-                    {"mcp": "sqa", "action": "compute_sha3_hash", "params": {"agent_id": agent_id, "action": action}},
-                    {"mcp": "sqa", "action": "chain_audit_entry", "params": {"hash": hash_val[:32], "timestamp": timestamp}},
+                    {"mcp": "sqa", "action": "compute_sha3_hash", "params": {"agent_id": agent_id, "action": effective_action}},
+                    {"mcp": "sqa", "action": "chain_audit_entry", "params": {"hash": effective_hash[:32] if effective_hash else "", "timestamp": timestamp}},
                     {"mcp": "sqa", "action": "sign_with_dilithium", "params": {"algorithm": "ML-DSA-65"}}
                 ]
             },
-            metadata={"event_type": "audit_log_entry", "action": action, "hash_preview": hash_val[:16]}
+            metadata={"event_type": "audit_log_entry", "action": effective_action, "hash_preview": effective_hash[:16] if effective_hash else ""}
         )
         intent_token = client.get_intent_token(plan_capture, validity_seconds=300)
-        print(f"[ARMORIQ] Audit entry logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        token_data = {
+            "plan_id": getattr(intent_token, "plan_id", None),
+            "plan_hash": getattr(intent_token, "plan_hash", None),
+            "token_id": getattr(intent_token, "token_id", None),
+            "merkle_root": getattr(intent_token, "merkle_root", None),
+            "intent_reference": getattr(intent_token, "intent_reference", None),
+        }
+        print(f"[ARMORIQ] Audit entry logged — plan_id: {token_data['plan_id']}")
         if SNAKE_AVAILABLE:
             try:
-                create_audit_log(agent_id=agent_id, action=action, status="SUCCESS",
-                                 metadata={"hash": hash_val[:32], "timestamp": timestamp})
+                create_audit_log(agent_id=agent_id, action=effective_action, status="SUCCESS",
+                                 metadata={"hash": effective_hash[:32] if effective_hash else "", "timestamp": timestamp})
             except Exception as snake_error:
                 print(f"[S5] SNAKE write error: {snake_error}")
         print("==============================\n")
+        return token_data
     except Exception as e:
         print(f"[ARMORIQ WARNING] {e}")
         print("==============================\n")
+        return None
 
 
-def log_token_issued(agent_id: str, allowed_actions: list, expires_at: str):
+def log_token_issued(agent_id: str, allowed_actions: list = None, expires_at: str = "",
+                     token_id: str = "", scope: list = None):
     """
     Log a CRANE capability token issuance to ArmorIQ.
     C1: Called when a JWT + Dilithium-3 token is minted for an agent.
+    Accepts both old (allowed_actions, expires_at) and new (token_id, scope) calling conventions.
     """
+    # Normalize parameter names — accept both calling conventions
+    effective_scope = scope or allowed_actions or []
     print("\n==============================")
     print(" ARMORIQ TOKEN ISSUED ")
     print("==============================")
     print(f"agent_id: {agent_id}")
-    print(f"allowed_actions: {allowed_actions}")
+    print(f"token_id: {token_id}")
+    print(f"scope: {effective_scope}")
     print(f"expires_at: {expires_at}")
     try:
         plan_capture = client.capture_plan(
             llm="sqa-crane-agent",
-            prompt=f"SQA CRANE: Capability token issued — agent={agent_id} scope={allowed_actions}",
+            prompt=f"SQA CRANE: Capability token issued — agent={agent_id} scope={effective_scope}",
             plan={
                 "goal": "Issue JWT + Dilithium-3 capability token for AI agent",
                 "steps": [
-                    {"mcp": "sqa", "action": "issue_jwt_token", "params": {"agent_id": agent_id, "scope": allowed_actions}},
+                    {"mcp": "sqa", "action": "issue_jwt_token", "params": {"agent_id": agent_id, "scope": effective_scope, "token_id": token_id}},
                     {"mcp": "sqa", "action": "sign_with_dilithium", "params": {"algorithm": "ML-DSA-65"}},
                     {"mcp": "sqa", "action": "register_token_policy", "params": {"expires_at": expires_at}}
                 ]
             },
-            metadata={"event_type": "capability_token_issued", "scope": allowed_actions, "expires_at": expires_at}
+            metadata={"event_type": "capability_token_issued", "scope": effective_scope, "token_id": token_id, "expires_at": expires_at}
         )
         intent_token = client.get_intent_token(plan_capture, validity_seconds=300)
-        print(f"[ARMORIQ] Token issuance logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        token_data = {
+            "plan_id": getattr(intent_token, "plan_id", None),
+            "plan_hash": getattr(intent_token, "plan_hash", None),
+            "token_id": getattr(intent_token, "token_id", None),
+            "merkle_root": getattr(intent_token, "merkle_root", None),
+            "intent_reference": getattr(intent_token, "intent_reference", None),
+        }
+        print(f"[ARMORIQ] Token issuance logged — plan_id: {token_data['plan_id']}")
         if SNAKE_AVAILABLE:
             try:
                 create_audit_log(agent_id=agent_id, action="TOKEN_ISSUED", status="SUCCESS",
@@ -521,39 +567,53 @@ def log_token_issued(agent_id: str, allowed_actions: list, expires_at: str):
             except Exception as snake_error:
                 print(f"[S5] SNAKE write error: {snake_error}")
         print("==============================\n")
+        return token_data
     except Exception as e:
         print(f"[ARMORIQ WARNING] {e}")
         print("==============================\n")
+        return None
 
 
-def log_scope_violation(agent_id: str, action: str, allowed_actions: list):
+def log_scope_violation(agent_id: str, action: str = "", allowed_actions: list = None,
+                        attempted_action: str = "", allowed_scope: list = None):
     """
     Log an out-of-scope action block to ArmorIQ — SECURITY ALERT.
     C2: Called when an agent attempts an action outside its token scope.
+    Accepts both old (action, allowed_actions) and new (attempted_action, allowed_scope) conventions.
     """
+    # Normalize parameter names
+    effective_action = attempted_action or action
+    effective_scope = allowed_scope or allowed_actions or []
     print("\n==============================")
     print(" ARMORIQ SCOPE VIOLATION ")
     print("==============================")
     print(f"agent_id: {agent_id}")
-    print(f"blocked_action: {action}")
-    print(f"token_scope: {allowed_actions}")
+    print(f"blocked_action: {effective_action}")
+    print(f"token_scope: {effective_scope}")
     print("threat_level: HIGH")
     try:
         plan_capture = client.capture_plan(
             llm="sqa-crane-agent",
-            prompt=f"SQA SECURITY ALERT: Out-of-scope action blocked — agent={agent_id} attempted={action} scope={allowed_actions}",
+            prompt=f"SQA SECURITY ALERT: Out-of-scope action blocked — agent={agent_id} attempted={effective_action} scope={effective_scope}",
             plan={
                 "goal": "Block out-of-scope AI agent action and alert",
                 "steps": [
-                    {"mcp": "sqa", "action": "check_token_scope", "params": {"action": action, "scope": allowed_actions}},
-                    {"mcp": "sqa", "action": "block_out_of_scope_action", "params": {"action": action, "threat_level": "HIGH"}},
+                    {"mcp": "sqa", "action": "check_token_scope", "params": {"action": effective_action, "scope": effective_scope}},
+                    {"mcp": "sqa", "action": "block_out_of_scope_action", "params": {"action": effective_action, "threat_level": "HIGH"}},
                     {"mcp": "sqa", "action": "emit_scope_violation_alert", "params": {"severity": "HIGH"}}
                 ]
             },
-            metadata={"event_type": "scope_violation", "blocked_action": action, "token_scope": allowed_actions, "threat_level": "HIGH"}
+            metadata={"event_type": "scope_violation", "blocked_action": effective_action, "token_scope": effective_scope, "threat_level": "HIGH"}
         )
         intent_token = client.get_intent_token(plan_capture, validity_seconds=300)
-        print(f"[ARMORIQ] Scope violation logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        token_data = {
+            "plan_id": getattr(intent_token, "plan_id", None),
+            "plan_hash": getattr(intent_token, "plan_hash", None),
+            "token_id": getattr(intent_token, "token_id", None),
+            "merkle_root": getattr(intent_token, "merkle_root", None),
+            "intent_reference": getattr(intent_token, "intent_reference", None),
+        }
+        print(f"[ARMORIQ] Scope violation logged — plan_id: {token_data['plan_id']}")
         if SNAKE_AVAILABLE:
             try:
                 create_audit_log(agent_id=agent_id, action=f"SCOPE_VIOLATION:{action}", status="BLOCKED",
@@ -561,111 +621,153 @@ def log_scope_violation(agent_id: str, action: str, allowed_actions: list):
             except Exception as snake_error:
                 print(f"[S5] SNAKE write error: {snake_error}")
         print("==============================\n")
+        return token_data
     except Exception as e:
         print(f"[ARMORIQ WARNING] {e}")
         print("==============================\n")
+        return None
 
 
-def log_tamper_detected(log_id: str, original_hash: str):
+def log_tamper_detected(log_id: str, original_hash: str = "", agent_id: str = "",
+                        expected_hash: str = "", actual_hash: str = ""):
     """
     Log tamper detection to ArmorIQ — CRITICAL security alert.
     S4: Called when audit log tampering is detected or simulated.
     Shows as BLOCKED intent plan in app.armoriq.ai/armorclaw.
+    Accepts both old (original_hash) and new (agent_id, expected_hash, actual_hash) conventions.
     """
+    effective_hash = expected_hash or original_hash
     print("\n==============================")
     print(" ARMORIQ TAMPER DETECTED ")
     print("==============================")
+    print(f"agent_id: {agent_id}")
     print(f"log_id: {log_id}")
-    print(f"original_hash: {original_hash[:16]}...")
+    print(f"expected_hash: {effective_hash[:16] if effective_hash else 'N/A'}...")
+    print(f"actual_hash: {actual_hash[:16] if actual_hash else 'N/A'}...")
     print("threat_level: CRITICAL")
     try:
         plan_capture = client.capture_plan(
             llm="sqa-snake-agent",
-            prompt=f"SQA CRITICAL ALERT: Audit log TAMPERED — log_id={log_id[:12]} hash corrupted — forensic chain broken",
+            prompt=f"SQA CRITICAL ALERT: Audit log TAMPERED — agent={agent_id[:16] if agent_id else 'SYSTEM'} log_id={log_id[:12]} hash corrupted — forensic chain broken",
             plan={
                 "goal": "Detect and report audit log tampering attack",
                 "steps": [
-                    {"mcp": "sqa", "action": "detect_hash_corruption", "params": {"log_id": log_id[:16], "original_hash": original_hash[:16]}},
+                    {"mcp": "sqa", "action": "detect_hash_corruption", "params": {"log_id": log_id[:16], "expected_hash": effective_hash[:16] if effective_hash else ""}},
                     {"mcp": "sqa", "action": "alert_soc_team", "params": {"severity": "CRITICAL", "type": "TAMPER_DETECTED"}},
                     {"mcp": "sqa", "action": "freeze_audit_chain", "params": {"reason": "TAMPER_DETECTED"}}
                 ]
             },
-            metadata={"event_type": "tamper_detected", "log_id": log_id[:16], "threat_level": "CRITICAL"}
+            metadata={"event_type": "tamper_detected", "log_id": log_id[:16], "agent_id": agent_id[:16] if agent_id else "", "threat_level": "CRITICAL"}
         )
         intent_token = client.get_intent_token(plan_capture, validity_seconds=3600)
-        print(f"[ARMORIQ] Tamper alert logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        token_data = {
+            "plan_id": getattr(intent_token, "plan_id", None),
+            "plan_hash": getattr(intent_token, "plan_hash", None),
+            "token_id": getattr(intent_token, "token_id", None),
+            "merkle_root": getattr(intent_token, "merkle_root", None),
+            "intent_reference": getattr(intent_token, "intent_reference", None),
+        }
+        print(f"[ARMORIQ] Tamper alert logged — plan_id: {token_data['plan_id']}")
         print("==============================\n")
+        return token_data
     except Exception as e:
         print(f"[ARMORIQ WARNING] {e}")
         print("==============================\n")
+        return None
 
 
-def log_merkle_checkpoint(root_hash: str, entry_count: int, checkpoint_id: str):
+def log_merkle_checkpoint(root_hash: str = "", entry_count: int = 0, checkpoint_id: str = "",
+                          agent_id: str = "", merkle_root: str = ""):
     """
     Log Merkle checkpoint to ArmorIQ — Sacred Peach Tree anchored.
     S6: Called when a new Merkle tree root is computed and stored.
     Shows as EXECUTING intent plan in platform.armoriq.ai Intent Plans.
+    Accepts both old (root_hash, checkpoint_id) and new (agent_id, merkle_root) conventions.
     """
+    effective_root = merkle_root or root_hash
+    effective_checkpoint = checkpoint_id or f"ckpt-{effective_root[:12]}"
     print("\n==============================")
     print(" ARMORIQ MERKLE CHECKPOINT ")
     print("==============================")
-    print(f"root_hash: {root_hash[:16]}...")
+    print(f"agent_id: {agent_id}")
+    print(f"merkle_root: {effective_root[:16] if effective_root else 'N/A'}...")
     print(f"entry_count: {entry_count}")
     try:
         plan_capture = client.capture_plan(
             llm="sqa-snake-agent",
-            prompt=f"SQA SNAKE: Merkle checkpoint anchored — root={root_hash[:16]} entries={entry_count} checkpoint={checkpoint_id[:12]}",
+            prompt=f"SQA SNAKE: Merkle checkpoint anchored — agent={agent_id[:16] if agent_id else 'SYSTEM'} root={effective_root[:16] if effective_root else 'N/A'} entries={entry_count}",
             plan={
                 "goal": "Anchor audit chain to cryptographic Merkle root (Sacred Peach Tree)",
                 "steps": [
-                    {"mcp": "sqa", "action": "compute_merkle_root", "params": {"entry_count": entry_count}},
-                    {"mcp": "sqa", "action": "store_merkle_checkpoint", "params": {"root": root_hash[:32], "checkpoint_id": checkpoint_id[:16]}},
+                    {"mcp": "sqa", "action": "compute_merkle_root", "params": {"entry_count": entry_count, "agent_id": agent_id[:16] if agent_id else ""}},
+                    {"mcp": "sqa", "action": "store_merkle_checkpoint", "params": {"root": effective_root[:32] if effective_root else "", "checkpoint_id": effective_checkpoint[:16]}},
                     {"mcp": "sqa", "action": "verify_tree_integrity", "params": {"algorithm": "SHA3-256"}}
                 ]
             },
-            metadata={"event_type": "merkle_checkpoint", "root_hash": root_hash[:16], "entry_count": entry_count}
+            metadata={"event_type": "merkle_checkpoint", "root_hash": effective_root[:16] if effective_root else "", "entry_count": entry_count, "agent_id": agent_id[:16] if agent_id else ""}
         )
         intent_token = client.get_intent_token(plan_capture, validity_seconds=3600)
-        print(f"[ARMORIQ] Merkle checkpoint logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        token_data = {
+            "plan_id": getattr(intent_token, "plan_id", None),
+            "plan_hash": getattr(intent_token, "plan_hash", None),
+            "token_id": getattr(intent_token, "token_id", None),
+            "merkle_root": getattr(intent_token, "merkle_root", None),
+            "intent_reference": getattr(intent_token, "intent_reference", None),
+        }
+        print(f"[ARMORIQ] Merkle checkpoint logged — plan_id: {token_data['plan_id']}")
         print("==============================\n")
+        return token_data
     except Exception as e:
         print(f"[ARMORIQ WARNING] {e}")
         print("==============================\n")
+        return None
 
 
-def log_honeypot_routed(agent_id: str, action_type: str, risk_score: int):
+def log_honeypot_routed(agent_id: str, action_type: str = "HIGH_RISK_ACTION",
+                        risk_score: int = 95, endpoint: str = ""):
     """
     Log honeypot routing to ArmorIQ — agent silently isolated.
     A3/A7: Called when MANTIS risk score exceeds threshold (>=90).
     Shows as BLOCKED intent plan in platform.armoriq.ai Intent Plans.
+    Accepts both old (action_type) and new (endpoint) calling conventions.
     """
+    effective_action = action_type or (f"HONEYPOT_ROUTE:{endpoint}" if endpoint else "HIGH_RISK_ACTION")
     print("\n==============================")
     print(" ARMORIQ HONEYPOT ROUTED ")
     print("==============================")
     print(f"agent_id: {agent_id}")
-    print(f"action_type: {action_type}")
+    print(f"action_type: {effective_action}")
     print(f"risk_score: {risk_score}")
     print("threat_level: HIGH")
     try:
         plan_capture = client.capture_plan(
             llm="sqa-mantis-agent",
-            prompt=f"SQA MANTIS: Agent silently routed to HONEYPOT — agent={agent_id[:16]} action={action_type} risk_score={risk_score}",
+            prompt=f"SQA MANTIS: Agent silently routed to HONEYPOT — agent={agent_id[:16]} action={effective_action} risk_score={risk_score}",
             plan={
                 "goal": "Isolate high-risk AI agent into honeypot decoy environment",
                 "steps": [
                     {"mcp": "sqa", "action": "evaluate_risk_threshold", "params": {"risk_score": risk_score, "threshold": 90}},
-                    {"mcp": "sqa", "action": "route_to_honeypot", "params": {"agent_id": agent_id[:16], "action": action_type}},
+                    {"mcp": "sqa", "action": "route_to_honeypot", "params": {"agent_id": agent_id[:16], "action": effective_action}},
                     {"mcp": "sqa", "action": "serve_decoy_response", "params": {"real_system": "PROTECTED"}}
                 ]
             },
             metadata={"event_type": "honeypot_routed", "agent_id": agent_id[:16], "risk_score": risk_score, "threat_level": "HIGH"}
         )
         intent_token = client.get_intent_token(plan_capture, validity_seconds=3600)
-        print(f"[ARMORIQ] Honeypot routing logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        token_data = {
+            "plan_id": getattr(intent_token, "plan_id", None),
+            "plan_hash": getattr(intent_token, "plan_hash", None),
+            "token_id": getattr(intent_token, "token_id", None),
+            "merkle_root": getattr(intent_token, "merkle_root", None),
+            "intent_reference": getattr(intent_token, "intent_reference", None),
+        }
+        print(f"[ARMORIQ] Honeypot routing logged — plan_id: {token_data['plan_id']}")
         print("==============================\n")
+        return token_data
     except Exception as e:
         print(f"[ARMORIQ WARNING] {e}")
         print("==============================\n")
+        return None
 
 
 def log_gateway_kill(agent_id: str, kill_reason: str, message_preview: str):
@@ -696,11 +798,20 @@ def log_gateway_kill(agent_id: str, kill_reason: str, message_preview: str):
             metadata={"event_type": "gateway_kill", "agent_id": agent_id[:16], "kill_reason": kill_reason[:50], "threat_level": "HIGH"}
         )
         intent_token = client.get_intent_token(plan_capture, validity_seconds=3600)
-        print(f"[ARMORIQ] Gateway KILL logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        token_data = {
+            "plan_id": getattr(intent_token, "plan_id", None),
+            "plan_hash": getattr(intent_token, "plan_hash", None),
+            "token_id": getattr(intent_token, "token_id", None),
+            "merkle_root": getattr(intent_token, "merkle_root", None),
+            "intent_reference": getattr(intent_token, "intent_reference", None),
+        }
+        print(f"[ARMORIQ] Gateway KILL logged — plan_id: {token_data['plan_id']}")
         print("==============================\n")
+        return token_data
     except Exception as e:
         print(f"[ARMORIQ WARNING] {e}")
         print("==============================\n")
+        return None
 
 
 def log_case_file_generated(agent_id: str, case_id: str, compliance_score: str):
@@ -730,14 +841,23 @@ def log_case_file_generated(agent_id: str, case_id: str, compliance_score: str):
             metadata={"event_type": "case_file_generated", "agent_id": agent_id[:16], "case_id": case_id[:16], "compliance_score": compliance_score}
         )
         intent_token = client.get_intent_token(plan_capture, validity_seconds=3600)
-        print(f"[ARMORIQ] Case file event logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
+        token_data = {
+            "plan_id": getattr(intent_token, "plan_id", None),
+            "plan_hash": getattr(intent_token, "plan_hash", None),
+            "token_id": getattr(intent_token, "token_id", None),
+            "merkle_root": getattr(intent_token, "merkle_root", None),
+            "intent_reference": getattr(intent_token, "intent_reference", None),
+        }
+        print(f"[ARMORIQ] Case file event logged — plan_id: {token_data['plan_id']}")
         print("==============================\n")
+        return token_data
     except Exception as e:
         print(f"[ARMORIQ WARNING] {e}")
         print("==============================\n")
+        return None
 
 
-def log_blacklist_event(agent_id: str):
+def log_blacklist_event(agent_id: str, reason: str = "AGENT_BLACKLISTED"):
     """
     Log agent blacklist to ArmorIQ — CRITICAL ALERT.
     S5: Also write to SNAKE audit chain.
@@ -767,12 +887,15 @@ def log_blacklist_event(agent_id: str):
         )
 
         intent_token = client.get_intent_token(plan_capture, validity_seconds=3600)
+        token_data = {
+            "plan_id": getattr(intent_token, "plan_id", None),
+            "plan_hash": getattr(intent_token, "plan_hash", None),
+            "token_id": getattr(intent_token, "token_id", None),
+            "merkle_root": getattr(intent_token, "merkle_root", None),
+            "intent_reference": getattr(intent_token, "intent_reference", None),
+        }
+        print(f"[ARMORIQ] Blacklist alert logged — plan_id: {token_data['plan_id']}")
 
-        print(f"[ARMORIQ] Blacklist alert logged — token_id: {getattr(intent_token, 'token_id', 'ok')}")
-
-        # =====================================================
-        # S5: WRITE TO SNAKE AUDIT CHAIN
-        # =====================================================
         if SNAKE_AVAILABLE:
             try:
                 create_audit_log(
@@ -785,7 +908,9 @@ def log_blacklist_event(agent_id: str):
                 print(f"[S5] SNAKE write error: {snake_error}")
 
         print("==============================\n")
+        return token_data
 
     except Exception as e:
         print(f"[ARMORIQ WARNING] {e}")
         print("==============================\n")
+        return None

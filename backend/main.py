@@ -189,11 +189,80 @@ except Exception as oracle_import_error:
     ORACLE_LEARNING_AVAILABLE = False
 
 # =========================================================
+# MCP SERVER SETUP — must be defined BEFORE lifespan so its
+# lifespan context can be merged with the parent FastAPI app.
+# =========================================================
+
+try:
+    from fastmcp import FastMCP
+    import httpx as _httpx
+
+    _mcp = FastMCP("SQA Security Gateway")
+
+    @_mcp.tool()
+    async def sqa_check(message: str) -> dict:
+        """
+        Check an agent action through SQA's post-quantum security pipeline.
+        Runs TIGRESS injection scan + MANTIS behavioral risk score + SNAKE audit log.
+        Returns verdict (ALLOWED/BLOCKED), risk score, reason, and audit log ID.
+        Call this BEFORE the agent executes any action.
+        """
+        async with _httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                "http://127.0.0.1:8000/v2/sdk/demo",
+                json={"mode": "clean", "message": message},
+            )
+            data = response.json()
+            return {
+                "allowed": data.get("final_verdict") == "ALLOWED",
+                "verdict": data.get("final_verdict"),
+                "risk_score": data.get("risk_score", 0),
+                "reason": data.get("reason") or "Action passed all SQA checks",
+                "blocked_by": data.get("blocked_by"),
+                "audit_log_id": data.get("audit_log_id"),
+            }
+
+    @_mcp.tool()
+    async def sqa_register_agent(name: str, sector: str = "banking") -> dict:
+        """
+        Register a new AI agent with SQA, generating a post-quantum identity
+        (Kyber-1024 + ML-DSA-65 keypair). Returns the new agent_id.
+        """
+        async with _httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(
+                "http://127.0.0.1:8000/v2/warden-scroll/forge-identity",
+                json={"name": name, "sector": sector, "allowed_actions": ["read", "write"]},
+            )
+            data = response.json()
+            return {
+                "agent_id": data.get("agent_id"),
+                "name": data.get("name"),
+                "sector": data.get("sector"),
+                "trust_score": data.get("trust_score", 100),
+            }
+
+    _mcp_app = _mcp.http_app(path="/")
+    _MCP_AVAILABLE = True
+except Exception as _mcp_err:
+    print(f"[MCP NOT READY] {_mcp_err}")
+    _mcp_app = None
+    _MCP_AVAILABLE = False
+
+
+# =========================================================
 # FASTAPI LIFESPAN
 # =========================================================
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+
+    # Enter MCP's lifespan context if MCP loaded successfully
+    # (this initializes the StreamableHTTPSessionManager task group)
+    if _MCP_AVAILABLE and _mcp_app is not None:
+        mcp_ctx = _mcp_app.lifespan(app)
+        await mcp_ctx.__aenter__()
+    else:
+        mcp_ctx = None
 
     print("\n===================================")
     print(" >> SQA DRAGON WARRIOR ONLINE ")
@@ -323,6 +392,13 @@ async def lifespan(app: FastAPI):
             "Dragon Warrior gateway shutting down"
     )
 
+    # Exit MCP's lifespan context
+    if mcp_ctx is not None:
+        try:
+            await mcp_ctx.__aexit__(None, None, None)
+        except Exception as _e:
+            print(f"[MCP shutdown warning] {_e}")
+
     print("\n===================================")
     print(" >> SQA SHUTDOWN ")
     print("===================================\n")
@@ -346,11 +422,25 @@ app = FastAPI(
 # CORS — MUST BE FIRST
 # =========================================================
 
+import os as _os
+
+_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+    "http://localhost:3000",
+]
+# Add production frontend URL from env (Vercel URL goes here)
+_frontend_url = _os.getenv("FRONTEND_URL", "")
+if _frontend_url:
+    _ALLOWED_ORIGINS.append(_frontend_url.rstrip("/"))
+
 app.add_middleware(
 
     CORSMiddleware,
 
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174", "http://localhost:3000"],
+    allow_origins=_ALLOWED_ORIGINS,
 
     allow_credentials=True,
 
@@ -649,6 +739,55 @@ try:
     print("[V2] SDK DEMO routes active (/v2/sdk/demo)")
 except Exception as e:
     print(f"[V2 SDK DEMO NOT READY] {e}")
+
+# =========================================================
+# SCROLL ROUTES — CONDENSED 18-ACTION DEMO ARCHITECTURE
+# =========================================================
+
+try:
+    from routes.v2_warden_scroll import router as v2_warden_scroll_router
+    app.include_router(v2_warden_scroll_router)
+    print("[SCROLL] WARDEN SCROLL active (M1-M7 → 3 actions)")
+except Exception as e:
+    print(f"[WARDEN SCROLL NOT READY] {e}")
+
+try:
+    from routes.v2_tribunal_scroll import router as v2_tribunal_scroll_router
+    app.include_router(v2_tribunal_scroll_router)
+    print("[SCROLL] TRIBUNAL SCROLL active (C1-C7 → 3 actions)")
+except Exception as e:
+    print(f"[TRIBUNAL SCROLL NOT READY] {e}")
+
+try:
+    from routes.v2_peach_tree_scroll import router as v2_peach_tree_scroll_router
+    app.include_router(v2_peach_tree_scroll_router)
+    print("[SCROLL] PEACH TREE SCROLL active (S1-S7 → 3 actions)")
+except Exception as e:
+    print(f"[PEACH TREE SCROLL NOT READY] {e}")
+
+try:
+    from routes.v2_oracle_scroll import router as v2_oracle_scroll_router
+    app.include_router(v2_oracle_scroll_router)
+    print("[SCROLL] ORACLE SCROLL active (A1-A9 → 3 actions)")
+except Exception as e:
+    print(f"[ORACLE SCROLL NOT READY] {e}")
+
+try:
+    from routes.v2_iron_cage_scroll import router as v2_iron_cage_scroll_router
+    app.include_router(v2_iron_cage_scroll_router)
+    print("[SCROLL] IRON CAGE SCROLL active (T1-T6 → 3 actions)")
+except Exception as e:
+    print(f"[IRON CAGE SCROLL NOT READY] {e}")
+
+# =========================================================
+# MCP SERVER MOUNT — uses the app created above (before lifespan)
+# so that the MCP lifespan context is properly merged.
+# =========================================================
+
+if _MCP_AVAILABLE and _mcp_app is not None:
+    app.mount("/mcp", _mcp_app)
+    print("[MCP] SQA Security MCP server mounted at /mcp/ (streamable-http)")
+
 
 # =========================================================
 # ROOT

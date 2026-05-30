@@ -14,6 +14,8 @@ import { Po } from "./pages/Po";
 import { MirrorTest } from "./pages/MirrorTest";
 import { HoneypotChamber } from "./pages/HoneypotChamber";
 import { CaseFile } from "./pages/CaseFile";
+import { Guide } from "./pages/Guide";
+import { SDK } from "./pages/SDK";
 
 const PAGES: Record<string, React.ComponentType> = {
   overview: Overview,
@@ -26,6 +28,8 @@ const PAGES: Record<string, React.ComponentType> = {
   mirror: MirrorTest,
   honeypot: HoneypotChamber,
   casefile: CaseFile,
+  guide: Guide,
+  sdk: SDK,
 };
 
 export default function App() {

@@ -1,10 +1,31 @@
 import axios from "axios";
+import { supabase } from "../lib/supabase";
 
 const BASE = import.meta.env.VITE_API_BASE ?? "";
 
 export const api = axios.create({
   baseURL: BASE,
-  timeout: 30000,
+  timeout: 120000, // 2 minutes — Case File generation calls Gemini + ArmorIQ in series
+});
+
+// Attach the logged-in user's email to every request so the backend can scope data
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  const email = session?.user?.email;
+  if (email) {
+    config.headers["X-Owner-Email"] = email;
+  }
+  // Also check demo user fallback
+  if (!email) {
+    try {
+      const demo = localStorage.getItem("demo_user");
+      if (demo) {
+        const d = JSON.parse(demo);
+        if (d?.email) config.headers["X-Owner-Email"] = d.email;
+      }
+    } catch { /* ignore */ }
+  }
+  return config;
 });
 
 export async function callApi<T = unknown>(
@@ -36,6 +57,7 @@ export const V2 = {
   generateKeypair: () => callApi("POST", "/v2/agents/keypairs/generate"),
   verifySignature: (body: unknown) => callApi("POST", "/v2/agents/verify-signature", body),
   blacklistAgent: (id: string, body: unknown) => callApi("POST", `/v2/agents/${id}/blacklist`, body),
+  deleteAgent: (id: string) => callApi("DELETE", `/v2/agents/${id}`),
   testBlacklisted: (id: string) => callApi("POST", `/v2/agents/${id}/test-blacklisted`),
   sendSigned: (body: unknown) => callApi("POST", "/v2/agents/send-signed", body),
   enclaveCheck: (id: string) => callApi("POST", `/v2/agents/${id}/enclave-check`),
@@ -115,6 +137,39 @@ export const V2 = {
 
   // HEALTH
   health: () => callApi("GET", "/health"),
+
+  // ── WARDEN SCROLL (MONKEY — M1-M7) ─────────────────────────────────────────
+  wardenForgeIdentity: (body: unknown) => callApi("POST", "/v2/warden-scroll/forge-identity", body),
+  wardenSealPayload: (body: unknown) => callApi("POST", "/v2/warden-scroll/seal-payload", body),
+  wardenBlacklistAlert: (body: unknown) => callApi("POST", "/v2/warden-scroll/blacklist-alert", body),
+
+  // ── TRIBUNAL SCROLL (CRANE — C1-C7) ────────────────────────────────────────
+  tribunalIssueToken: (body: unknown) => callApi("POST", "/v2/tribunal-scroll/issue-capability-token", body),
+  tribunalScopeGate: (body: unknown) => callApi("POST", "/v2/tribunal-scroll/test-scope-gate", body),
+  tribunalJadePalace: (body: unknown) => callApi("POST", "/v2/tribunal-scroll/jade-palace-tribunal", body),
+
+  // ── PEACH TREE SCROLL (SNAKE — S1-S7) ──────────────────────────────────────
+  peachSealChain: (body: unknown) => callApi("POST", "/v2/peach-tree-scroll/seal-chain", body),
+  peachTriggerTamper: (body: unknown) => callApi("POST", "/v2/peach-tree-scroll/trigger-tamper", body),
+  peachCheckpointMerkle: (body: unknown) => callApi("POST", "/v2/peach-tree-scroll/checkpoint-merkle", body),
+
+  // ── ORACLE SCROLL (MANTIS — A1-A9) ─────────────────────────────────────────
+  oracleBuildBaseline: (body: unknown) => callApi("POST", "/v2/oracle-scroll/build-baseline", body),
+  oracleSimulateAttack: (body: unknown) => callApi("POST", "/v2/oracle-scroll/simulate-attack", body),
+  oracleInvokeOracle: (body: unknown) => callApi("POST", "/v2/oracle-scroll/invoke-oracle", body),
+
+  // ── IRON CAGE SCROLL (TIGRESS — T1-T6) ─────────────────────────────────────
+  ironCleanScan: (body?: unknown) => callApi("POST", "/v2/iron-cage-scroll/clean-scan", body ?? {}),
+  ironInjectionGauntlet: () => callApi("POST", "/v2/iron-cage-scroll/injection-gauntlet"),
+  ironMultiTurnDrift: (body?: unknown) => callApi("POST", "/v2/iron-cage-scroll/multi-turn-drift", body ?? {}),
+
+  // ── DRAGON SCROLL (PO — P1-P11) ────────────────────────────────────────────
+  dragonBftConsensus: (body: unknown) => callApi("POST", "/v2/po/bft-consensus-demo", body),
+  dragonFinancialMultisign: (body: unknown) => callApi("POST", "/v2/po/financial-multisign-demo", body),
+
+  // ── SDK ─────────────────────────────────────────────────────────────────────
+  sdkWrapDemo: (body: unknown) => callApi("POST", "/v2/sdk/wrap-demo", body),
+  sdkDownloadUrl: () => `${import.meta.env.VITE_API_BASE ?? ""}/v2/sdk/download`,
 };
 
 export type Agent = {

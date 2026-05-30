@@ -62,55 +62,50 @@ class SQAGuard:
             latency_ms=0.0,
         )
 
+        # Build a flat message string from the payload for keyword scanning
+        if isinstance(payload, dict):
+            message = " ".join(str(v) for v in payload.values())
+        else:
+            message = str(payload)
+
         try:
-            # 1. TIGRESS scan — semantic attack detection
-            tigress_resp = await self._client.post("/v2/tigress/scan", json={
-                "message": json.dumps(payload),
-                "session_id": f"sqa_guard_{agent_id}",
-                "agent_id": agent_id,
+            # Route through the full SQA pipeline (TIGRESS + MANTIS + SNAKE) in one call
+            # Uses /v2/sdk/demo for fast, deterministic keyword + behavioral scoring.
+            resp = await self._client.post("/v2/sdk/demo", json={
+                "mode": "clean",
+                "message": message,
             })
-            if tigress_resp.status_code == 200:
-                td = tigress_resp.json()
-                if td.get("blocked") or td.get("verdict") == "BLOCKED":
-                    verdict.allowed = False
-                    verdict.blocked = True
-                    verdict.tigress_clean = False
-                    verdict.reason = td.get("reason", "TIGRESS ArmorClaw blocked payload")
-                    verdict.latency_ms = (time.monotonic() - t0) * 1000
-                    return verdict
+            d = resp.json()
 
-            # 2. MANTIS score — behavioral anomaly detection
-            score_resp = await self._client.post("/v2/behavior/score-action", json={
-                "agent_id": agent_id,
-                "action_type": action_type,
-                "payload": payload,
-            })
-            if score_resp.status_code == 200:
-                sd = score_resp.json()
-                verdict.risk_score = sd.get("risk_score", 0)
-                if verdict.risk_score > self.block_threshold:
-                    verdict.allowed = False
-                    verdict.blocked = True
-                    verdict.reason = sd.get("block_reason", f"Risk score {verdict.risk_score} exceeds threshold {self.block_threshold}")
-                    verdict.latency_ms = (time.monotonic() - t0) * 1000
-                    return verdict
+            # Two possible block formats:
+            # 1. TIGRESS global middleware: {"status": "BLOCKED", "security_layer": "TIGRESS", ...}
+            # 2. SDK demo endpoint:        {"final_verdict": "BLOCKED", "blocked_by": ..., ...}
+            blocked = (
+                d.get("status") == "BLOCKED"
+                or d.get("final_verdict") == "BLOCKED"
+                or resp.status_code in (400, 403)
+            )
 
-            # 3. SNAKE audit — immutable log entry
-            audit_resp = await self._client.post("/v2/audit/log", json={
-                "agent_id": agent_id,
-                "action_type": action_type,
-                "payload": payload,
-            })
-            if audit_resp.status_code == 200:
-                ad = audit_resp.json()
-                verdict.audit_log_id = ad.get("log_id")
-                verdict.chain_hash = ad.get("current_hash")
+            verdict.risk_score = d.get("risk_score", 0)
+            verdict.audit_log_id = d.get("audit_log_id")
+            verdict.chain_hash = d.get("chain_hash")
+
+            if blocked:
+                verdict.allowed = False
+                verdict.blocked = True
+                blocked_by = d.get("blocked_by") or d.get("security_layer") or "SQA"
+                verdict.tigress_clean = (blocked_by != "TIGRESS")
+                threats = d.get("threats") or []
+                reason = d.get("reason")
+                if not reason and threats:
+                    reason = "Threats detected: " + ", ".join(threats[:3])
+                verdict.reason = f"[{blocked_by}] {reason or 'Action blocked by SQA pipeline'}"
 
         except Exception as e:
             # Fail open — SQA unavailable should not break the agent
-            # but the action is unaudited (log to stderr)
             import sys
-            print(f"[SQA Guard] WARNING: SQA unreachable — action unaudited: {e}", file=sys.stderr)
+            err_msg = str(e) or type(e).__name__
+            print(f"[SQA Guard] WARNING: SQA unreachable - action unaudited: {err_msg}", file=sys.stderr)
 
         verdict.latency_ms = (time.monotonic() - t0) * 1000
         return verdict

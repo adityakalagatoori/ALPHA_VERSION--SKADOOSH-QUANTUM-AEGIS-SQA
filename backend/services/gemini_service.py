@@ -10,23 +10,19 @@ ONLINE_MODE = os.getenv("ONLINE_MODE", "true").lower() == "true"
 OLLAMA_ENDPOINT = os.getenv("OLLAMA_ENDPOINT", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama2")
 
-# Handle deprecated google.generativeai package
+GEMINI_AVAILABLE = False
 try:
-    import google.generativeai as genai
+    from google import genai as _genai
     GEMINI_AVAILABLE = True
 except ImportError:
-    try:
-        import google.genai as genai
-        GEMINI_AVAILABLE = True
-    except:
-        genai = None
-        GEMINI_AVAILABLE = False
+    _genai = None
 
-if GEMINI_API_KEY and ONLINE_MODE and GEMINI_AVAILABLE:
-    try:
-        genai.configure(api_key=GEMINI_API_KEY)
-    except:
-        pass
+
+def _gemini_client():
+    if not _genai or not GEMINI_API_KEY:
+        return None
+    return _genai.Client(api_key=GEMINI_API_KEY)
+
 
 # =========================================================
 # A6: OLLAMA LOCAL FALLBACK
@@ -101,7 +97,7 @@ def score_anomaly_with_gemini(
     endpoint: str
 ):
     """
-    Guardrailed Gemini scoring with Ollama fallback.
+    Guardrailed Gemini 2.0 Flash scoring with Ollama fallback.
     Input: Statistical vectors only (deltas, thresholds, endpoint risk).
     Never send raw agent context or prompts.
     Output: Reasoning + confidence adjustment.
@@ -111,10 +107,6 @@ def score_anomaly_with_gemini(
         return score_anomaly_with_ollama(anomaly_vector, baseline)
 
     try:
-        # =====================================================
-        # BUILD VECTOR ONLY (NO RAW DATA)
-        # =====================================================
-
         guardrail_vector = {
             "payload_delta": anomaly_vector.get("payload_delta", 0),
             "response_delta": anomaly_vector.get("response_delta", 0),
@@ -124,10 +116,6 @@ def score_anomaly_with_gemini(
             "learning_phase": baseline.get("learning_phase", False),
             "action_count": baseline.get("action_count", 0)
         }
-
-        # =====================================================
-        # GUARDRAILED PROMPT
-        # =====================================================
 
         prompt = f"""
 You are a security anomaly analyst. Evaluate this statistical vector ONLY:
@@ -146,12 +134,13 @@ Example output:
 Analyze the statistical vector and return JSON only.
 """
 
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(prompt)
+        client = _gemini_client()
+        if not client:
+            return score_anomaly_with_ollama(anomaly_vector, baseline)
 
-        response_text = response.text.strip()
+        resp = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+        response_text = resp.text.strip()
 
-        # Parse JSON response
         if "{" in response_text:
             json_start = response_text.index("{")
             json_end = response_text.rindex("}") + 1
@@ -160,13 +149,15 @@ Analyze the statistical vector and return JSON only.
             return {
                 "available": True,
                 "reasoning": result.get("reasoning", ""),
-                "confidence_adjustment": result.get("confidence_adjustment", 0)
+                "confidence_adjustment": result.get("confidence_adjustment", 0),
+                "source": "gemini-2.0-flash"
             }
         else:
             return {
                 "available": True,
                 "reasoning": response_text[:100],
-                "confidence_adjustment": 0
+                "confidence_adjustment": 0,
+                "source": "gemini-2.0-flash"
             }
 
     except Exception as e:
@@ -246,7 +237,7 @@ def predict_threat_with_gemini(
     recent_endpoints: list
 ):
     """
-    Use Gemini to predict next likely attack vector
+    Use Gemini 2.0 Flash to predict next likely attack vector
     from honeypot telemetry (statistical only).
     Falls back to Ollama if Gemini unavailable.
     """
@@ -273,10 +264,12 @@ Return JSON: {{"prediction": "...", "confidence": 0.0-1.0}}
 Example: {{"prediction": "Credential exfiltration via /vault/keys", "confidence": 0.85}}
 """
 
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(prompt)
+        client = _gemini_client()
+        if not client:
+            return predict_threat_with_ollama(honeypot_events, recent_endpoints)
 
-        response_text = response.text.strip()
+        resp = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+        response_text = resp.text.strip()
 
         if "{" in response_text:
             json_start = response_text.index("{")
@@ -286,13 +279,15 @@ Example: {{"prediction": "Credential exfiltration via /vault/keys", "confidence"
             return {
                 "available": True,
                 "prediction": result.get("prediction", "Unknown threat"),
-                "confidence": min(result.get("confidence", 0.5), 1.0)
+                "confidence": min(result.get("confidence", 0.5), 1.0),
+                "source": "gemini-2.0-flash"
             }
         else:
             return {
                 "available": True,
                 "prediction": response_text[:80],
-                "confidence": 0.5
+                "confidence": 0.5,
+                "source": "gemini-2.0-flash"
             }
 
     except Exception as e:

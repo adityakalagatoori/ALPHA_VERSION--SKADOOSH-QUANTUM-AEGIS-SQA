@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ScrollText as ScrollIcon } from 'lucide-react'
 import { SparklesText } from '@/components/ui/sparkles-text'
 import { RippleButton } from '@/components/ui/multi-type-ripple-buttons'
 import { Input } from '@/components/ui/input'
@@ -81,7 +82,7 @@ export default function RequestAccess() {
                 transition={{ duration: 0.4 }}
                 className="text-center py-12"
               >
-                <div className="text-6xl mb-6">📜</div>
+                <ScrollIcon size={56} className="mx-auto mb-6" style={{ color: 'var(--kfp-gold)', opacity: 0.85 }} strokeWidth={1} />
                 <h3 className="text-2xl mb-3" style={{ color: 'var(--kfp-gold)', fontFamily: 'var(--font-display)' }}>
                   Scroll Received
                 </h3>

@@ -15,19 +15,19 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/v2': {
-        target: 'https://sqa-backend-hsw2.onrender.com',
+        target: 'http://localhost:8000',
         changeOrigin: true,
-        secure: true,
+        secure: false,
       },
       '/health': {
-        target: 'https://sqa-backend-hsw2.onrender.com',
+        target: 'http://localhost:8000',
         changeOrigin: true,
-        secure: true,
+        secure: false,
       },
       '/access': {
-        target: 'https://sqa-backend-hsw2.onrender.com',
+        target: 'http://localhost:8000',
         changeOrigin: true,
-        secure: true,
+        secure: false,
       },
     },
   },

@@ -1,11 +1,12 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronRight, ChevronLeft, Swords, Shield, FileSearch } from "lucide-react";
 import clsx from "clsx";
 import { InteractiveLogo } from "./InteractiveLogo";
 
 export type Section = {
   id: string;
-  emoji: string;
+  emoji?: string;
+  icon?: React.ReactNode;
   image?: string;
   label: string;
   count: number;
@@ -13,16 +14,18 @@ export type Section = {
 };
 
 export const SECTIONS: Section[] = [
-  { id: "overview",  emoji: "🏠",  image: "/overview.png",  label: "Overview",                count: 0,  accent: "#ffffff" },
-  { id: "monkey",    emoji: "🐒",  image: "/monkey.png",    label: "MONKEY — Identity",       count: 7,  accent: "#ffd700" },
-  { id: "crane",     emoji: "🦢",  image: "/crane.png",     label: "CRANE — Capability",      count: 7,  accent: "#4488ff" },
-  { id: "snake",     emoji: "🐍",  image: "/snake.png",     label: "SNAKE — Audit Chain",     count: 7,  accent: "#00ff88" },
-  { id: "mantis",    emoji: "🦗",  image: "/mantis.png",    label: "MANTIS — AI Anomaly",     count: 9,  accent: "#00ccaa" },
-  { id: "tigress",   emoji: "🐯",  image: "/tigress.png",   label: "TIGRESS — Prompt Defense",count: 6,  accent: "#ff6600" },
-  { id: "po",        emoji: "🐼",  image: "/po.png",        label: "PO — Gateway",            count: 11, accent: "#ffffff" },
-  { id: "mirror",    emoji: "⚔️",                           label: "Mirror Test",             count: 11, accent: "#ff3333" },
-  { id: "honeypot",  emoji: "🔒",  image: "/tailung.png",   label: "Tai Lung's Cage",         count: 0,  accent: "#b04020" },
-  { id: "casefile",  emoji: "📋",  image: "/scroll.png",    label: "SQA Case File",           count: 0,  accent: "#a78bfa" },
+  { id: "overview",  image: "/overview.png",  label: "Overview",          count: 0,  accent: "#ffffff" },
+  { id: "monkey",    image: "/monkey.png",    label: "Warden's Scroll",   count: 3,  accent: "#ffd700" },
+  { id: "crane",     image: "/crane.png",     label: "Tribunal Scroll",   count: 3,  accent: "#4488ff" },
+  { id: "snake",     image: "/snake.png",     label: "Peach Tree Scroll", count: 3,  accent: "#00ff88" },
+  { id: "mantis",    image: "/mantis.png",    label: "Oracle Scroll",     count: 3,  accent: "#00ccaa" },
+  { id: "tigress",   image: "/tigress.png",   label: "Iron Cage Scroll",  count: 3,  accent: "#ff6600" },
+  { id: "po",        image: "/po.png",        label: "Dragon Scroll",     count: 3,  accent: "#e8e8e8" },
+  { id: "mirror",    label: "Mirror Test",    count: 11, accent: "#ff3333" },
+  { id: "honeypot",  image: "/tailung.png",   label: "Tai Lung's Cage",   count: 0,  accent: "#b04020" },
+  { id: "casefile",  image: "/scroll.png",    label: "SQA Case File",     count: 0,  accent: "#a78bfa" },
+  { id: "guide",     image: "/po.png",        label: "Demo Guide",         count: 6,  accent: "#a78bfa" },
+  { id: "sdk",       image: "/scroll.png",    label: "SDK",                count: 0,  accent: "#60a5fa" },
 ];
 
 type Props = {
@@ -59,7 +62,12 @@ function SectionIcon({ s, active }: { s: Section; active: boolean }) {
       </span>
     );
   }
-  return <span className="text-base leading-none flex-shrink-0">{s.emoji}</span>;
+  // Lucide icon fallback for sections without character images
+  const iconColor = active ? s.accent : "#555";
+  if (s.id === "mirror") {
+    return <Swords size={20} style={{ color: iconColor, flexShrink: 0 }} strokeWidth={1.5} />;
+  }
+  return <FileSearch size={20} style={{ color: iconColor, flexShrink: 0 }} strokeWidth={1.5} />;
 }
 
 export function Sidebar({ active, open, onSelect, onToggle }: Props) {

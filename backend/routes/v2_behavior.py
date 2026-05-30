@@ -267,16 +267,22 @@ async def score_action(req: ScoreActionRequest):
     honeypot_routed = score >= 90
     status = "HONEYPOT_ROUTE" if honeypot_routed else ("ALERT" if score >= 70 else "NORMAL")
 
+    armoriq_hp_response = {"status": "not_triggered"}
     if honeypot_routed:
         _HONEYPOT_AGENTS.add(req.agent_id)
-        # ArmorIQ honeypot alert — BLOCKED intent plan in platform.armoriq.ai
+        # ArmorIQ honeypot alert — synchronous with 8s timeout for real plan_id in response
+        import concurrent.futures
+        armoriq_hp_response = {"status": "timeout", "note": "ArmorIQ did not respond in time"}
         def _armoriq_hp():
+            from core.armoriq import log_honeypot_routed
+            return log_honeypot_routed(agent_id=req.agent_id, action_type=req.action_type, risk_score=score)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
             try:
-                from core.armoriq import log_honeypot_routed
-                log_honeypot_routed(agent_id=req.agent_id, action_type=req.action_type, risk_score=score)
-            except Exception as e:
-                print(f"[ARMORIQ A3] {e}")
-        threading.Thread(target=_armoriq_hp, daemon=True).start()
+                _td = _ex.submit(_armoriq_hp).result(timeout=8)
+                if _td:
+                    armoriq_hp_response = {"status": "logged", **{k: v for k, v in _td.items() if v is not None}}
+            except Exception as _e:
+                print(f"[ARMORIQ A3] {_e}")
 
     row = _log_action(req.agent_id, req.action_type, {"mode": req.mode},
                       risk_score=score, honeypot_routed=honeypot_routed,
@@ -305,10 +311,7 @@ async def score_action(req: ScoreActionRequest):
             "status": "dispatched",
             "note": "Action scored in app.armoriq.ai/armorclaw — intent proof created",
         },
-        "armoriq": {
-            "status": "dispatched" if honeypot_routed else "not_triggered",
-            "note": "BLOCKED intent plan logged to platform.armoriq.ai" if honeypot_routed else "No ArmorIQ event for low-risk actions",
-        },
+        "armoriq": armoriq_hp_response,
     }
 
 
@@ -387,7 +390,7 @@ def compliance_status():
     """A5 — Verify Gemini BAA / HIPAA / SOC2 compliance config"""
     import os
     api_key = os.getenv("GEMINI_API_KEY", "")
-    model_name = "gemini-1.5-flash"
+    model_name = "gemini-2.0-flash"
     has_key = bool(api_key)
 
     return {
@@ -448,15 +451,19 @@ async def trigger_honeypot_test(req: HoneypotTestRequest):
 
     db.table("agents").update({"trust_score": 0}).eq("agent_id", req.agent_id).execute()
 
-    # ArmorIQ honeypot routing alert — BLOCKED intent plan in platform.armoriq.ai
-    import threading
+    # ArmorIQ honeypot routing alert — synchronous with 8s timeout for real plan_id in response
+    import concurrent.futures
+    armoriq_response_a7 = {"status": "timeout", "note": "ArmorIQ did not respond in time"}
     def _armoriq_a7():
+        from core.armoriq import log_honeypot_routed
+        return log_honeypot_routed(agent_id=req.agent_id, action_type="MASS_ANOMALOUS_FLOOD", risk_score=max_score)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
         try:
-            from core.armoriq import log_honeypot_routed
-            log_honeypot_routed(agent_id=req.agent_id, action_type="MASS_ANOMALOUS_FLOOD", risk_score=max_score)
-        except Exception as e:
-            print(f"[ARMORIQ A7] {e}")
-    threading.Thread(target=_armoriq_a7, daemon=True).start()
+            _td = _ex.submit(_armoriq_a7).result(timeout=8)
+            if _td:
+                armoriq_response_a7 = {"status": "logged", **{k: v for k, v in _td.items() if v is not None}}
+        except Exception as _e:
+            print(f"[ARMORIQ A7] {_e}")
 
     log_result("A7", "BLOCKED", {"max_score": max_score, "actions": len(rows)})
     return {
@@ -468,7 +475,7 @@ async def trigger_honeypot_test(req: HoneypotTestRequest):
         "message": f"Score spiked to {max_score}. ⚠️ Threshold crossed. Agent silently routed to HONEYPOT. Real system protected.",
         "supabase_table": "honeypot_logs",
         "agent_actions_written": len(rows),
-        "armoriq": {"status": "dispatched", "note": "BLOCKED intent plan logged to platform.armoriq.ai — honeypot isolation event"},
+        "armoriq": armoriq_response_a7,
     }
 
 

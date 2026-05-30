@@ -18,21 +18,13 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 import warnings
 
 try:
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        import google.generativeai as genai
-
-    if GEMINI_API_KEY:
-        genai.configure(api_key=GEMINI_API_KEY)
-        GEMINI_AVAILABLE = True
-    else:
+    from google import genai as _genai_sdk
+    GEMINI_AVAILABLE = bool(GEMINI_API_KEY)
+    if not GEMINI_API_KEY:
         print("[TRIBUNAL] GEMINI_API_KEY not set - using XGBoost+SHAP only")
-        genai = None
-        GEMINI_AVAILABLE = False
-
 except Exception as e:
     print(f"[TRIBUNAL] Gemini SDK unavailable ({e}) - using XGBoost+SHAP only")
-    genai = None
+    _genai_sdk = None
     GEMINI_AVAILABLE = False
 
 # =========================================================
@@ -244,8 +236,10 @@ Feature importance (SHAP values):
 Provide a security-focused, technical explanation of the tribunal verdict.
 """
 
-        model = genai.GenerativeModel("gemini-pro")
-        response = model.generate_content(prompt)
+        if not _genai_sdk or not GEMINI_API_KEY:
+            raise ValueError("Gemini unavailable")
+        client = _genai_sdk.Client(api_key=GEMINI_API_KEY)
+        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
         explanation = response.text.strip()
 
         print(f"[GEMINI] Explanation: {explanation}")

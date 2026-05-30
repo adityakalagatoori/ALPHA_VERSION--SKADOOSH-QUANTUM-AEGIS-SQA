@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Zap, RefreshCw } from 'lucide-react'
 import { SparklesText } from '@/components/ui/sparkles-text'
 import { RippleButton } from '@/components/ui/multi-type-ripple-buttons'
 import { callApi } from '@/api/client'
@@ -24,16 +25,16 @@ interface SimResult {
 }
 
 const NODES: NodeDef[] = [
-  { id: 'input',     label: 'AI Agent',   sub: 'Incoming Request',       emoji: '🤖',                   lx: 52,  ly: 305, color: '#9ca3af', r: 24, type: 'io'      },
+  { id: 'input',     label: 'AI Agent',   sub: 'Incoming Request',       emoji: 'AI',                   lx: 52,  ly: 305, color: '#9ca3af', r: 24, type: 'io'      },
   { id: 'po',        label: 'PO',         sub: 'Dragon Warrior Gateway', emoji: '🐼', image: '/po.png',       lx: 188, ly: 305, color: '#e5e7eb', r: 37, type: 'gateway'  },
   { id: 'monkey',    label: 'MONKEY',     sub: 'Post-Quantum Identity',  emoji: '🐒', image: '/monkey.png',   lx: 425, ly: 72,  color: '#c9a227', r: 29, type: 'warrior'  },
   { id: 'crane',     label: 'CRANE',      sub: 'Capability Tokens',      emoji: '🦢', image: '/crane.png',    lx: 425, ly: 192, color: '#60a5fa', r: 29, type: 'warrior'  },
   { id: 'snake',     label: 'SNAKE',      sub: 'Quantum Audit Chain',    emoji: '🐍', image: '/snake.png',    lx: 425, ly: 312, color: '#00ff88', r: 29, type: 'warrior'  },
   { id: 'mantis',    label: 'MANTIS',     sub: 'AI Anomaly Detection',   emoji: '🦗', image: '/mantis.png',   lx: 425, ly: 432, color: '#f472b6', r: 29, type: 'warrior'  },
   { id: 'tigress',   label: 'TIGRESS',    sub: 'Prompt Defense',         emoji: '🐯', image: '/tigress.png',  lx: 425, ly: 552, color: '#fb923c', r: 29, type: 'warrior'  },
-  { id: 'armoriq',   label: 'ArmorIQ',    sub: 'Cloud Policy Gate',      emoji: '🛡️',                   lx: 662, ly: 192, color: '#a78bfa', r: 26, type: 'service'  },
-  { id: 'armorclaw', label: 'ArmorClaw',  sub: 'AI Semantic Scanner',    emoji: '⚔️',                   lx: 662, ly: 432, color: '#fb7185', r: 26, type: 'service'  },
-  { id: 'output',    label: 'Secured',    sub: 'Request Delivered',      emoji: '✅',                   lx: 878, ly: 305, color: '#00ff88', r: 24, type: 'io'       },
+  { id: 'armoriq',   label: 'ArmorIQ',    sub: 'Cloud Policy Gate',      emoji: 'IQ',                   lx: 662, ly: 192, color: '#a78bfa', r: 26, type: 'service'  },
+  { id: 'armorclaw', label: 'ArmorClaw',  sub: 'AI Semantic Scanner',    emoji: 'CLW',                  lx: 662, ly: 432, color: '#fb7185', r: 26, type: 'service'  },
+  { id: 'output',    label: 'Secured',    sub: 'Request Delivered',      emoji: 'OK',                   lx: 878, ly: 305, color: '#00ff88', r: 24, type: 'io'       },
 ]
 const NM: Record<string, NodeDef> = Object.fromEntries(NODES.map(n => [n.id, n]))
 
@@ -474,9 +475,11 @@ export default function SystemArchViz() {
   const selNode   = sel ? NM[sel] : null
   const selDetail = sel ? DETAILS[sel] : null
   const targetWarrior = (sel && WARRIORS.includes(sel)) ? sel : null
-  const attackBtnLabel = simState === 'attack' ? '⚡ Intercepting…'
-    : targetWarrior ? `⚡ Attack ${NM[targetWarrior].label}`
-    : '⚡ Simulate Attack'
+  const attackBtnLabel = simState === 'attack'
+    ? <span className="flex items-center gap-1.5"><Zap size={12} strokeWidth={2} /> Intercepting…</span>
+    : targetWarrior
+      ? <span className="flex items-center gap-1.5"><Zap size={12} strokeWidth={2} /> Attack {NM[targetWarrior].label}</span>
+      : <span className="flex items-center gap-1.5"><Zap size={12} strokeWidth={2} /> Simulate Attack</span>
 
   return (
     <section id="architecture" className="py-20 relative overflow-hidden">
@@ -539,7 +542,7 @@ export default function SystemArchViz() {
                           }}
                         />
                       ) : (
-                        <span className="leading-none" style={{ fontSize: node.type === 'gateway' ? '1.35rem' : '1.1rem' }}>{node.emoji}</span>
+                        <span className="font-mono font-bold leading-none tracking-tight" style={{ fontSize: node.type === 'gateway' ? '0.75rem' : '0.6rem', color: node.color }}>{node.emoji}</span>
                       )}
                       <span className="font-mono text-center leading-tight mt-0.5" style={{ fontSize:'7px', letterSpacing:'0.08em', color: isSel ? node.color : 'rgba(255,255,255,0.38)', maxWidth:'52px', whiteSpace:'nowrap' }}>
                         {node.label}
@@ -574,7 +577,9 @@ export default function SystemArchViz() {
                 className="text-xs font-mono px-5 py-2.5 disabled:opacity-40"
                 style={{ background: simState==='request' ? 'rgba(0,255,136,0.12)' : 'rgba(0,255,136,0.07)', color:'#00ff88', border:'1px solid rgba(0,255,136,0.35)', borderRadius:'8px' } as React.CSSProperties}
               >
-                {simState === 'request' ? '🔄 Processing…' : '🔄 Safe Request'}
+                {simState === 'request'
+                  ? <span className="flex items-center gap-1.5"><RefreshCw size={12} strokeWidth={2} className="animate-spin" /> Processing…</span>
+                  : <span className="flex items-center gap-1.5"><RefreshCw size={12} strokeWidth={2} /> Safe Request</span>}
               </RippleButton>
 
               {targetWarrior && simState === 'idle' && (
@@ -626,7 +631,7 @@ export default function SystemArchViz() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold font-mono text-sm" style={{ color: simResult.type === 'blocked' ? '#ef4444' : '#00ff88' }}>
-                          {simResult.type === 'blocked' ? '❌ ATTACK BLOCKED' : '✅ REQUEST DELIVERED'}
+                          {simResult.type === 'blocked' ? 'ATTACK BLOCKED' : 'REQUEST DELIVERED'}
                         </span>
                         <span className="text-xs font-mono px-2 py-0.5 rounded" style={{ background: simResult.type === 'blocked' ? 'rgba(239,68,68,0.14)' : 'rgba(0,255,136,0.1)', color: simResult.type === 'blocked' ? '#fca5a5' : '#86efac' }}>
                           {simResult.verdict}
@@ -724,7 +729,9 @@ export default function SystemArchViz() {
                         whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }}
                         className="w-full rounded-lg py-2.5 text-xs font-mono font-semibold tracking-wide transition-colors disabled:opacity-40"
                         style={{ background: hexA(selNode.color, 0.14), border:`1px solid ${hexA(selNode.color, 0.35)}`, color: selNode.color }}>
-                        {simState === 'attack' ? '⚡ Intercepting…' : `⚡ Test ${selNode.label} Defense`}
+                        {simState === 'attack'
+                          ? <span className="flex items-center justify-center gap-1.5"><Zap size={12} strokeWidth={2} /> Intercepting…</span>
+                          : <span className="flex items-center justify-center gap-1.5"><Zap size={12} strokeWidth={2} /> Test {selNode.label} Defense</span>}
                       </motion.button>
                     </div>
                   )}

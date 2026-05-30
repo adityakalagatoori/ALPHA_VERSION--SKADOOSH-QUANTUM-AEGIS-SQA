@@ -69,21 +69,24 @@ def log_action(req: LogActionRequest):
     current_hash = _sha3(raw)
     dil_sig = _sign_dilithium(current_hash, agent)
 
-    # ArmorIQ audit entry via SDK — registers in ArmorIQ dashboard
-    armoriq_response = {"status": "logged", "note": "ArmorIQ SDK audit entry dispatched"}
-    import threading
+    # ArmorIQ audit entry via SDK — synchronous with 8s timeout for real plan_id in response
+    import concurrent.futures
+    armoriq_response = {"status": "timeout", "note": "ArmorIQ did not respond in time"}
     def _armoriq_audit():
+        from core.armoriq import log_audit_entry
+        return log_audit_entry(
+            agent_id=req.agent_id,
+            action=req.action_type,
+            hash_val=current_hash,
+            timestamp=timestamp,
+        )
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
         try:
-            from core.armoriq import log_audit_entry
-            log_audit_entry(
-                agent_id=req.agent_id,
-                action=req.action_type,
-                hash_val=current_hash,
-                timestamp=timestamp,
-            )
-        except Exception as e:
-            print(f"[ARMORIQ S1] {e}")
-    threading.Thread(target=_armoriq_audit, daemon=True).start()
+            _td = _ex.submit(_armoriq_audit).result(timeout=8)
+            if _td:
+                armoriq_response = {"status": "logged", **{k: v for k, v in _td.items() if v is not None}}
+        except Exception as _e:
+            print(f"[ARMORIQ S1] {_e}")
 
     res = db.table("audit_logs").insert({
         "agent_id": req.agent_id,
@@ -251,15 +254,19 @@ def simulate_tamper():
         "tampered": True,
     }).eq("log_id", entry["log_id"]).execute()
 
-    # ArmorIQ tamper alert — registers CRITICAL event in platform.armoriq.ai Intent Plans
-    import threading
+    # ArmorIQ tamper alert — synchronous with 8s timeout for real plan_id in response
+    import concurrent.futures
+    armoriq_response_s4 = {"status": "timeout", "note": "ArmorIQ did not respond in time"}
     def _armoriq_tamper():
+        from core.armoriq import log_tamper_detected
+        return log_tamper_detected(log_id=entry["log_id"], original_hash=entry["current_hash"])
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
         try:
-            from core.armoriq import log_tamper_detected
-            log_tamper_detected(log_id=entry["log_id"], original_hash=entry["current_hash"])
-        except Exception as e:
-            print(f"[ARMORIQ S4] {e}")
-    threading.Thread(target=_armoriq_tamper, daemon=True).start()
+            _td = _ex.submit(_armoriq_tamper).result(timeout=8)
+            if _td:
+                armoriq_response_s4 = {"status": "logged", **{k: v for k, v in _td.items() if v is not None}}
+        except Exception as _e:
+            print(f"[ARMORIQ S4] {_e}")
 
     log_result("S4", "TAMPERED", {"log_id": entry["log_id"][:8]})
     return {
@@ -268,7 +275,7 @@ def simulate_tamper():
         "log_id": entry["log_id"],
         "original_hash_preview": entry["current_hash"][:16] + "...",
         "tampered_hash_preview": fake_hash[:16] + "...",
-        "armoriq": {"status": "dispatched", "note": "CRITICAL tamper alert logged to platform.armoriq.ai Intent Plans"},
+        "armoriq": armoriq_response_s4,
         "message": "Hash corrupted in Supabase. Tamper detection will catch this within 5s.",
     }
 
@@ -368,15 +375,19 @@ def merkle_checkpoint():
     }).execute()
     checkpoint = res2.data[0]
 
-    # ArmorIQ Merkle checkpoint — registers in platform.armoriq.ai Intent Plans
-    import threading
+    # ArmorIQ Merkle checkpoint — synchronous with 8s timeout for real plan_id in response
+    import concurrent.futures
+    armoriq_response_s6 = {"status": "timeout", "note": "ArmorIQ did not respond in time"}
     def _armoriq_merkle():
+        from core.armoriq import log_merkle_checkpoint
+        return log_merkle_checkpoint(root_hash=root, entry_count=len(entries), checkpoint_id=checkpoint["checkpoint_id"])
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
         try:
-            from core.armoriq import log_merkle_checkpoint
-            log_merkle_checkpoint(root_hash=root, entry_count=len(entries), checkpoint_id=checkpoint["checkpoint_id"])
-        except Exception as e:
-            print(f"[ARMORIQ S6] {e}")
-    threading.Thread(target=_armoriq_merkle, daemon=True).start()
+            _td = _ex.submit(_armoriq_merkle).result(timeout=8)
+            if _td:
+                armoriq_response_s6 = {"status": "logged", **{k: v for k, v in _td.items() if v is not None}}
+        except Exception as _e:
+            print(f"[ARMORIQ S6] {_e}")
 
     log_result("S6", "SUCCESS", {"root": root[:16], "entries": len(entries)})
     return {
@@ -386,7 +397,7 @@ def merkle_checkpoint():
         "root_hash_preview": root[:16] + "...",
         "entry_count": len(entries),
         "timestamp": checkpoint.get("created_at"),
-        "armoriq": {"status": "dispatched", "note": "Merkle root anchored to platform.armoriq.ai Intent Plans"},
+        "armoriq": armoriq_response_s6,
         "supabase_table": "merkle_checkpoints",
         "supabase_row": {
             "checkpoint_id": checkpoint["checkpoint_id"],

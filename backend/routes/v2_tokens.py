@@ -90,20 +90,23 @@ def issue_token(payload: IssueTokenRequest):
     }).execute()
     token_row = res.data[0]
 
-    # ArmorIQ token issuance via SDK — registers in ArmorIQ dashboard
-    armoriq_response = {"status": "logged", "note": "ArmorIQ SDK token issuance dispatched"}
-    import threading
+    # ArmorIQ token issuance via SDK — synchronous with 8s timeout for real plan_id in response
+    import concurrent.futures
+    armoriq_response = {"status": "timeout", "note": "ArmorIQ did not respond in time"}
     def _armoriq_token():
+        from core.armoriq import log_token_issued
+        return log_token_issued(
+            agent_id=payload.agent_id,
+            allowed_actions=payload.allowed_actions,
+            expires_at=expires_at.isoformat(),
+        )
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
         try:
-            from core.armoriq import log_token_issued
-            log_token_issued(
-                agent_id=payload.agent_id,
-                allowed_actions=payload.allowed_actions,
-                expires_at=expires_at.isoformat(),
-            )
-        except Exception as e:
-            print(f"[ARMORIQ C1] {e}")
-    threading.Thread(target=_armoriq_token, daemon=True).start()
+            _td = _ex.submit(_armoriq_token).result(timeout=8)
+            if _td:
+                armoriq_response = {"status": "logged", **{k: v for k, v in _td.items() if v is not None}}
+        except Exception as _e:
+            print(f"[ARMORIQ C1] {_e}")
 
     return {
         "feature": "C1",
@@ -162,20 +165,23 @@ def check_scope(payload: CheckScopeRequest):
     _log_action(payload.agent_id, f"BLOCKED_ACTION", {"action": payload.action, "scope": allowed},
                 risk_score=60, blocked=True, block_reason=f"OUT_OF_SCOPE:{payload.action}")
 
-    # ArmorIQ scope violation via SDK — registers HIGH alert in ArmorIQ dashboard
-    armoriq_response = {"status": "logged", "note": "ArmorIQ SDK scope violation alert dispatched"}
-    import threading
+    # ArmorIQ scope violation via SDK — synchronous with 8s timeout for real plan_id in response
+    import concurrent.futures
+    armoriq_response = {"status": "timeout", "note": "ArmorIQ did not respond in time"}
     def _armoriq_scope():
+        from core.armoriq import log_scope_violation
+        return log_scope_violation(
+            agent_id=payload.agent_id,
+            action=payload.action,
+            allowed_actions=allowed,
+        )
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as _ex:
         try:
-            from core.armoriq import log_scope_violation
-            log_scope_violation(
-                agent_id=payload.agent_id,
-                action=payload.action,
-                allowed_actions=allowed,
-            )
-        except Exception as e:
-            print(f"[ARMORIQ C2] {e}")
-    threading.Thread(target=_armoriq_scope, daemon=True).start()
+            _td = _ex.submit(_armoriq_scope).result(timeout=8)
+            if _td:
+                armoriq_response = {"status": "logged", **{k: v for k, v in _td.items() if v is not None}}
+        except Exception as _e:
+            print(f"[ARMORIQ C2] {_e}")
 
     raise HTTPException(403, {
         "feature": "C2",
